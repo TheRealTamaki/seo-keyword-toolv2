@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { initializeDatabase, closeDatabase } from './config/database';
-import { initializeRedis, closeRedis } from './config/redis';
+import { initializeDatabase, closeDatabase, healthCheck as dbHealthCheck } from './config/database';
+import { initializeRedis, closeRedis, healthCheck as redisHealthCheck } from './config/redis';
 
 // Load environment variables
 dotenv.config();
@@ -20,9 +20,38 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
+// Basic health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Detailed health check endpoint
+app.get('/health/detailed', async (req, res) => {
+  const database = await dbHealthCheck();
+  const redis = await redisHealthCheck();
+
+  const overallStatus =
+    database.status === 'healthy' && redis.status === 'healthy'
+      ? 'healthy'
+      : 'unhealthy';
+
+  const statusCode = overallStatus === 'healthy' ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: overallStatus,
+    timestamp: new Date(),
+    services: {
+      database,
+      redis,
+    },
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
 });
 
 // API routes (to be implemented)
