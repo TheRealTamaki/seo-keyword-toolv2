@@ -17,7 +17,7 @@ export interface UserDTO {
 }
 
 /**
- * Create a new user
+ * Create a new user (legacy - for non-Supabase auth)
  */
 export async function createUser(
   email: string,
@@ -28,6 +28,26 @@ export async function createUser(
      VALUES ($1, $2)
      RETURNING id, email, created_at, updated_at`,
     [email, passwordHash]
+  );
+
+  return result.rows[0];
+}
+
+/**
+ * Create a user from Supabase Auth
+ * Uses Supabase user ID and doesn't require password hash
+ */
+export async function createUserFromSupabase(
+  supabaseUserId: string,
+  email: string
+): Promise<UserDTO> {
+  const result = await query<UserDTO>(
+    `INSERT INTO users (id, email, password_hash)
+     VALUES ($1, $2, '')
+     ON CONFLICT (id) DO UPDATE
+     SET email = EXCLUDED.email, updated_at = NOW()
+     RETURNING id, email, created_at, updated_at`,
+    [supabaseUserId, email]
   );
 
   return result.rows[0];

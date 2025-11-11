@@ -1,12 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, isTokenBlacklisted, TokenPayload } from '../services/auth.service';
+import { verifyToken } from '../services/auth.service';
 import * as UserModel from '../models/user.model';
 
 // Extend Express Request interface to include user
 declare global {
   namespace Express {
     interface Request {
-      user?: UserModel.UserDTO;
+      user?: {
+        id: string;
+        email: string;
+        created_at: string;
+      };
       userId?: string;
       token?: string;
     }
@@ -14,7 +18,7 @@ declare global {
 }
 
 /**
- * Middleware to authenticate JWT token
+ * Middleware to authenticate Supabase JWT token
  */
 export async function authenticate(
   req: Request,
@@ -35,20 +39,10 @@ export async function authenticate(
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Check if token is blacklisted
-    const blacklisted = await isTokenBlacklisted(token);
-    if (blacklisted) {
-      res.status(401).json({
-        success: false,
-        error: 'Token has been revoked',
-      });
-      return;
-    }
-
-    // Verify token
-    let decoded: TokenPayload;
+    // Verify token with Supabase
+    let supabaseUser;
     try {
-      decoded = verifyToken(token);
+      supabaseUser = await verifyToken(token);
     } catch (error) {
       res.status(401).json({
         success: false,
@@ -57,10 +51,14 @@ export async function authenticate(
       return;
     }
 
-    // Get user from database
-    const user = await UserModel.findUserByIdSafe(decoded.userId);
+    // Sync user to our database if not exists
+    let dbUser = await UserModel.findUserById(supabaseUser.id);
+    if (!dbUser && supabaseUser.email) {
+      await UserModel.createUserFromSupabase(supabaseUser.id, supabaseUser.email);
+      dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);
+    }
 
-    if (!user) {
+    if (!dbUser) {
       res.status(401).json({
         success: false,
         error: 'User not found',
@@ -69,8 +67,12 @@ export async function authenticate(
     }
 
     // Attach user and token to request
-    req.user = user;
-    req.userId = user.id;
+    req.user = {
+      id: supabaseUser.id,
+      email: supabaseUser.email!,
+      created_at: supabaseUser.created_at,
+    };
+    req.userId = supabaseUser.id;
     req.token = token;
 
     next();
@@ -102,21 +104,24 @@ export async function optionalAuthenticate(
 
     const token = authHeader.substring(7);
 
-    // Check if token is blacklisted
-    const blacklisted = await isTokenBlacklisted(token);
-    if (blacklisted) {
-      next();
-      return;
-    }
-
     // Verify token
     try {
-      const decoded = verifyToken(token);
-      const user = await UserModel.findUserByIdSafe(decoded.userId);
+      const supabaseUser = await verifyToken(token);
 
-      if (user) {
-        req.user = user;
-        req.userId = user.id;
+      // Sync user to our database if not exists
+      let dbUser = await UserModel.findUserById(supabaseUser.id);
+      if (!dbUser && supabaseUser.email) {
+        await UserModel.createUserFromSupabase(supabaseUser.id, supabaseUser.email);
+        dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);
+      }
+
+      if (dbUser) {
+        req.user = {
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          created_at: supabaseUser.created_at,
+        };
+        req.userId = supabaseUser.id;
         req.token = token;
       }
     } catch (error) {
@@ -152,7 +157,7 @@ export function requireAuth(
 /**
  * Helper function to get user from request
  */
-export function getAuthUser(req: Request): UserModel.UserDTO | null {
+export function getAuthUser(req: Request): typeof req.user | null {
   return req.user || null;
 }
 

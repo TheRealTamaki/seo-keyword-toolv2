@@ -1,14 +1,6 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { setCache, deleteCache, cacheExists } from '../config/redis';
+import { supabase, supabaseAdmin } from '../config/supabase';
+import { AuthResponse, User as SupabaseUser, Session } from '@supabase/supabase-js';
 import * as UserModel from '../models/user.model';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
-const SALT_ROUNDS = 10;
-
-// Token blacklist cache prefix
-const TOKEN_BLACKLIST_PREFIX = 'token:blacklist:';
 
 export interface RegisterInput {
   email: string;
@@ -21,178 +13,244 @@ export interface LoginInput {
 }
 
 export interface AuthResult {
-  user: UserModel.UserDTO;
-  token: string;
-}
-
-export interface TokenPayload {
-  userId: string;
-  email: string;
-  iat?: number;
-  exp?: number;
+  user: {
+    id: string;
+    email: string;
+    created_at: string;
+  };
+  session: Session;
 }
 
 /**
- * Register a new user
+ * Register a new user with Supabase Auth
  */
 export async function register(input: RegisterInput): Promise<AuthResult> {
   const { email, password } = input;
 
-  // Check if user already exists
-  const existingUser = await UserModel.findUserByEmail(email);
-  if (existingUser) {
-    throw new Error('Email already registered');
+  // Validate password strength before attempting registration
+  const passwordValidation = validatePasswordStrength(password);
+  if (!passwordValidation.valid) {
+    throw new Error(passwordValidation.errors.join(', '));
   }
 
-  // Hash password
-  const passwordHash = await hashPassword(password);
+  // Register with Supabase Auth
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: process.env.FRONTEND_URL,
+    },
+  });
 
-  // Create user
-  const user = await UserModel.createUser(email, passwordHash);
+  if (error) {
+    // Check for common Supabase errors
+    if (error.message.includes('already registered')) {
+      throw new Error('Email already registered');
+    }
+    throw new Error(error.message);
+  }
 
-  // Generate token
-  const token = generateToken({ userId: user.id, email: user.email });
+  if (!data.user || !data.session) {
+    throw new Error('Registration failed - no user or session returned');
+  }
 
-  return { user, token };
+  // Sync user to our database
+  await syncUserToDatabase(data.user);
+
+  return {
+    user: {
+      id: data.user.id,
+      email: data.user.email!,
+      created_at: data.user.created_at,
+    },
+    session: data.session,
+  };
 }
 
 /**
- * Login user
+ * Login user with Supabase Auth
  */
 export async function login(input: LoginInput): Promise<AuthResult> {
   const { email, password } = input;
 
-  // Find user
-  const user = await UserModel.findUserByEmail(email);
-  if (!user) {
+  // Sign in with Supabase
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
     throw new Error('Invalid email or password');
   }
 
-  // Verify password
-  const isValidPassword = await verifyPassword(password, user.password_hash);
-  if (!isValidPassword) {
-    throw new Error('Invalid email or password');
+  if (!data.user || !data.session) {
+    throw new Error('Login failed - no user or session returned');
   }
 
-  // Generate token
-  const token = generateToken({ userId: user.id, email: user.email });
+  // Sync user to our database (in case they were created elsewhere)
+  await syncUserToDatabase(data.user);
 
-  // Return user without password hash
-  const userDTO = UserModel.toUserDTO(user);
-
-  return { user: userDTO, token };
+  return {
+    user: {
+      id: data.user.id,
+      email: data.user.email!,
+      created_at: data.user.created_at,
+    },
+    session: data.session,
+  };
 }
 
 /**
- * Logout user (blacklist token)
+ * Logout user with Supabase
  */
-export async function logout(token: string): Promise<void> {
+export async function logout(accessToken: string): Promise<void> {
   try {
-    // Decode token to get expiration
-    const decoded = jwt.decode(token) as TokenPayload;
+    // Supabase handles token invalidation
+    const { error } = await supabase.auth.admin.signOut(accessToken);
 
-    if (!decoded || !decoded.exp) {
-      return; // Token is invalid or doesn't have expiration
-    }
-
-    // Calculate TTL (time until token expires)
-    const now = Math.floor(Date.now() / 1000);
-    const ttl = decoded.exp - now;
-
-    if (ttl > 0) {
-      // Add token to blacklist with TTL
-      await setCache(`${TOKEN_BLACKLIST_PREFIX}${token}`, true, ttl);
+    if (error) {
+      console.error('Logout error:', error);
     }
   } catch (error) {
     console.error('Error during logout:', error);
-    throw new Error('Failed to logout');
+    // Don't throw - logout should be best-effort
   }
 }
 
 /**
- * Check if token is blacklisted
+ * Verify Supabase JWT token and get user
  */
-export async function isTokenBlacklisted(token: string): Promise<boolean> {
-  try {
-    return await cacheExists(`${TOKEN_BLACKLIST_PREFIX}${token}`);
-  } catch (error) {
-    console.error('Error checking token blacklist:', error);
-    return false; // Fail open to avoid blocking valid requests
+export async function verifyToken(token: string): Promise<SupabaseUser> {
+  const { data, error } = await supabase.auth.getUser(token);
+
+  if (error || !data.user) {
+    throw new Error('Invalid or expired token');
   }
+
+  return data.user;
 }
 
 /**
- * Verify JWT token
- */
-export function verifyToken(token: string): TokenPayload {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
-    return decoded;
-  } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      throw new Error('Token expired');
-    } else if (error instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid token');
-    }
-    throw new Error('Token verification failed');
-  }
-}
-
-/**
- * Generate JWT token
- */
-export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRE,
-  });
-}
-
-/**
- * Hash password using bcrypt
- */
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
-}
-
-/**
- * Verify password against hash
- */
-export async function verifyPassword(
-  password: string,
-  hash: string
-): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
-
-/**
- * Change user password
+ * Change user password with Supabase
  */
 export async function changePassword(
-  userId: string,
-  currentPassword: string,
+  accessToken: string,
   newPassword: string
 ): Promise<void> {
-  // Find user
-  const user = await UserModel.findUserById(userId);
-  if (!user) {
-    throw new Error('User not found');
+  // Validate password strength
+  const passwordValidation = validatePasswordStrength(newPassword);
+  if (!passwordValidation.valid) {
+    throw new Error(passwordValidation.errors.join(', '));
   }
 
-  // Verify current password
-  const isValidPassword = await verifyPassword(currentPassword, user.password_hash);
-  if (!isValidPassword) {
-    throw new Error('Current password is incorrect');
+  // Update password using the user's access token
+  const { error } = await supabase.auth.updateUser(
+    { password: newPassword },
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Verify email with token
+ */
+export async function verifyEmail(token: string, email: string): Promise<void> {
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: token,
+    type: 'email',
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Resend verification email
+ */
+export async function resendVerificationEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * Sync Supabase user to our local database
+ * This allows us to maintain application-specific user data
+ */
+async function syncUserToDatabase(supabaseUser: SupabaseUser): Promise<void> {
+  try {
+    // Check if user exists in our database
+    const existingUser = await UserModel.findUserById(supabaseUser.id);
+
+    if (!existingUser && supabaseUser.email) {
+      // Create user in our database (without password hash since Supabase manages auth)
+      await UserModel.createUserFromSupabase(supabaseUser.id, supabaseUser.email);
+    }
+  } catch (error) {
+    console.error('Error syncing user to database:', error);
+    // Don't throw - auth should succeed even if sync fails
+  }
+}
+
+/**
+ * Get user session from access token
+ */
+export async function getSession(accessToken: string): Promise<Session | null> {
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error || !data.session) {
+    return null;
   }
 
-  // Hash new password
-  const newPasswordHash = await hashPassword(newPassword);
+  return data.session;
+}
 
-  // Update password
-  await UserModel.updateUserPassword(userId, newPasswordHash);
+/**
+ * Refresh access token
+ */
+export async function refreshToken(refreshToken: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.refreshSession({
+    refresh_token: refreshToken,
+  });
+
+  if (error || !data.user || !data.session) {
+    throw new Error('Failed to refresh token');
+  }
+
+  return {
+    user: {
+      id: data.user.id,
+      email: data.user.email!,
+      created_at: data.user.created_at,
+    },
+    session: data.session,
+  };
 }
 
 /**
  * Validate password strength
+ * Supabase has built-in password rules, but we add extra validation
  */
 export function validatePasswordStrength(password: string): {
   valid: boolean;

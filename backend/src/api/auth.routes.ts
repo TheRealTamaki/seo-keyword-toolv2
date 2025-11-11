@@ -4,7 +4,6 @@ import { authenticate } from '../middleware/auth.middleware';
 import {
   registerValidation,
   loginValidation,
-  changePasswordValidation,
   handleValidationErrors,
 } from '../middleware/validation.middleware';
 
@@ -12,7 +11,7 @@ const router = Router();
 
 /**
  * POST /api/auth/register
- * Register a new user
+ * Register a new user with Supabase Auth
  */
 router.post(
   '/register',
@@ -28,19 +27,31 @@ router.post(
         success: true,
         data: {
           user: result.user,
-          token: result.token,
+          session: result.session,
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
         },
-        message: 'Registration successful',
+        message: 'Registration successful. Please check your email to verify your account.',
       });
     } catch (error) {
       console.error('Registration error:', error);
 
-      if (error instanceof Error && error.message === 'Email already registered') {
-        res.status(409).json({
-          success: false,
-          error: error.message,
-        });
-        return;
+      if (error instanceof Error) {
+        if (error.message.includes('already registered')) {
+          res.status(409).json({
+            success: false,
+            error: error.message,
+          });
+          return;
+        }
+
+        if (error.message.includes('Password')) {
+          res.status(400).json({
+            success: false,
+            error: error.message,
+          });
+          return;
+        }
       }
 
       res.status(500).json({
@@ -53,7 +64,7 @@ router.post(
 
 /**
  * POST /api/auth/login
- * Login user
+ * Login user with Supabase Auth
  */
 router.post(
   '/login',
@@ -69,7 +80,9 @@ router.post(
         success: true,
         data: {
           user: result.user,
-          token: result.token,
+          session: result.session,
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
         },
         message: 'Login successful',
       });
@@ -94,7 +107,7 @@ router.post(
 
 /**
  * POST /api/auth/logout
- * Logout user (blacklist token)
+ * Logout user (invalidate Supabase session)
  */
 router.post(
   '/logout',
@@ -161,14 +174,12 @@ router.get(
 router.post(
   '/change-password',
   authenticate,
-  changePasswordValidation,
-  handleValidationErrors,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { currentPassword, newPassword } = req.body;
-      const userId = req.userId;
+      const { newPassword } = req.body;
+      const token = req.token;
 
-      if (!userId) {
+      if (!token) {
         res.status(401).json({
           success: false,
           error: 'User not authenticated',
@@ -176,7 +187,15 @@ router.post(
         return;
       }
 
-      await AuthService.changePassword(userId, currentPassword, newPassword);
+      if (!newPassword) {
+        res.status(400).json({
+          success: false,
+          error: 'New password is required',
+        });
+        return;
+      }
+
+      await AuthService.changePassword(token, newPassword);
 
       res.status(200).json({
         success: true,
@@ -186,26 +205,51 @@ router.post(
       console.error('Change password error:', error);
 
       if (error instanceof Error) {
-        if (error.message === 'Current password is incorrect') {
-          res.status(400).json({
-            success: false,
-            error: error.message,
-          });
-          return;
-        }
-
-        if (error.message === 'User not found') {
-          res.status(404).json({
-            success: false,
-            error: error.message,
-          });
-          return;
-        }
+        res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+        return;
       }
 
       res.status(500).json({
         success: false,
         error: 'Failed to change password',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/reset-password
+ * Send password reset email
+ */
+router.post(
+  '/reset-password',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          error: 'Email is required',
+        });
+        return;
+      }
+
+      await AuthService.sendPasswordResetEmail(email);
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset email sent. Please check your inbox.',
+      });
+    } catch (error) {
+      console.error('Reset password error:', error);
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send reset email',
       });
     }
   }
@@ -227,6 +271,82 @@ router.post(
         user: req.user,
       },
     });
+  }
+);
+
+/**
+ * POST /api/auth/refresh
+ * Refresh access token using refresh token
+ */
+router.post(
+  '/refresh',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { refresh_token } = req.body;
+
+      if (!refresh_token) {
+        res.status(400).json({
+          success: false,
+          error: 'Refresh token is required',
+        });
+        return;
+      }
+
+      const result = await AuthService.refreshToken(refresh_token);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          user: result.user,
+          session: result.session,
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        },
+        message: 'Token refreshed successfully',
+      });
+    } catch (error) {
+      console.error('Refresh token error:', error);
+
+      res.status(401).json({
+        success: false,
+        error: 'Failed to refresh token',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/auth/resend-verification
+ * Resend email verification
+ */
+router.post(
+  '/resend-verification',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          error: 'Email is required',
+        });
+        return;
+      }
+
+      await AuthService.resendVerificationEmail(email);
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification email sent. Please check your inbox.',
+      });
+    } catch (error) {
+      console.error('Resend verification error:', error);
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to resend verification email',
+      });
+    }
   }
 );
 

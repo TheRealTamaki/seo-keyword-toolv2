@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { initializeDatabase, closeDatabase, healthCheck as dbHealthCheck } from './config/database';
 import { initializeRedis, closeRedis, healthCheck as redisHealthCheck } from './config/redis';
+import { initializeSupabase, healthCheck as supabaseHealthCheck } from './config/supabase';
 
 // Load environment variables
 dotenv.config();
@@ -34,9 +35,12 @@ app.get('/health', (req, res) => {
 app.get('/health/detailed', async (req, res) => {
   const database = await dbHealthCheck();
   const redis = await redisHealthCheck();
+  const supabase = await supabaseHealthCheck();
 
   const overallStatus =
-    database.status === 'healthy' && redis.status === 'healthy'
+    database.status === 'healthy' &&
+    redis.status === 'healthy' &&
+    supabase.status === 'healthy'
       ? 'healthy'
       : 'unhealthy';
 
@@ -48,6 +52,7 @@ app.get('/health/detailed', async (req, res) => {
     services: {
       database,
       redis,
+      supabase,
     },
     uptime: process.uptime(),
     memory: process.memoryUsage(),
@@ -82,6 +87,7 @@ async function start() {
     // Initialize services
     await initializeDatabase();
     await initializeRedis();
+    await initializeSupabase();
 
     // Start listening
     app.listen(PORT, () => {
