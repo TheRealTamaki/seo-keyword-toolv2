@@ -4,6 +4,8 @@
 
 This document outlines the requirements for an SEO keyword tool designed to help marketers, SEO professionals, and content creators track rankings, discover keyword opportunities, and analyze competitor strategies. The tool focuses on three core modules: Rank Tracking, Keyword Research, and Competitor Analysis.
 
+**Key Implementation Model**: This is a "Bring Your Own Key" (BYOK) application that integrates with the **DataForSEO API**. Users provide their own DataForSEO API credentials to power the tool's functionality, eliminating the need for direct data source integrations and allowing us to focus on UI/UX and analytics.
+
 ## Product Vision
 
 Create a comprehensive yet user-friendly SEO keyword tool that combines rank tracking, keyword research, and competitive intelligence to help users improve their search engine visibility and discover untapped opportunities.
@@ -353,10 +355,18 @@ Identify keyword gaps, analyze competitor strategies, and discover quick wins th
 ## Technical Considerations
 
 ### Data Sources
-- Integration with SEO data APIs (Semrush, Ahrefs, DataForSEO, etc.)
-- Custom SERP scraping infrastructure (with rate limiting)
-- Proxy rotation for geo-specific results
-- Data caching and update schedules
+- **DataForSEO API** as primary data source for all SEO metrics and rank tracking
+- **Bring Your Own Key (BYOK) Model**: Users must provide their own DataForSEO API keys
+- User API keys stored securely (encrypted at rest)
+- Proxy rotation handled by DataForSEO (transparent to application)
+- Data caching and update schedules managed application-side
+
+### API Key Management
+- **Secure Storage**: User API keys encrypted using AES-256 at rest
+- **Key Validation**: Validate DataForSEO API keys on entry
+- **Usage Tracking**: Monitor API usage against DataForSEO account limits
+- **Key Rotation**: Support for updating/rotating API keys
+- **Permissions**: Restrict API key usage to read-only operations (no account modifications)
 
 ### Performance Requirements
 - Rank check completion within 24 hours for daily tracking
@@ -395,11 +405,13 @@ Identify keyword gaps, analyze competitor strategies, and discover quick wins th
 - Keyboard shortcuts for power users
 
 ### Onboarding
-- Guided setup wizard
-- Sample data/demo mode
+- Guided setup wizard including DataForSEO API key configuration
+- API key validation and connection testing
+- Sample data/demo mode (if user wants to explore before connecting API key)
 - Interactive tutorials
 - Context-sensitive help
 - Video tutorials and documentation
+- Links to DataForSEO account creation and API key management
 
 ### Export & Reporting
 - CSV export for all data tables
@@ -465,11 +477,12 @@ Identify keyword gaps, analyze competitor strategies, and discover quick wins th
 
 ## Open Questions
 
-1. What tier/pricing model will determine feature limits (keywords tracked, competitors, etc.)?
+1. Should we offer tiered plans (Free/Pro/Enterprise) to manage feature access, or remain API-tier agnostic?
 2. Should we include basic site auditing features or focus purely on keywords?
-3. What level of API access should be provided to users?
-4. Should we support team/agency features in v1 or defer to v2?
-5. What is the minimum viable location count for rank tracking?
+3. Should we support team/agency features in v1 or defer to v2?
+4. What is the minimum viable location count for rank tracking?
+5. What monitoring/alerts should we provide for user API usage/quota warnings?
+6. Should we provide DataForSEO pricing integration/transparency in the UI?
 
 ---
 
