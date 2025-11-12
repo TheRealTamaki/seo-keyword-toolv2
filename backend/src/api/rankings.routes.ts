@@ -13,6 +13,10 @@ import {
   getAverageRank,
   RankingFilters
 } from '../models/ranking.model';
+import {
+  performBulkRankChecks,
+  storeRankCheckResults
+} from '../services/rank-check.service';
 
 const router = Router();
 
@@ -407,7 +411,6 @@ router.get('/keyword/:keywordId/average', async (req: Request, res: Response) =>
 /**
  * POST /api/rankings/check
  * Trigger a rank check for keywords (requires DataForSEO API key)
- * TODO: Implement DataForSEO integration for actual rank checking
  */
 router.post('/check', requireApiKey, async (req: Request, res: Response) => {
   try {
@@ -455,27 +458,76 @@ router.post('/check', requireApiKey, async (req: Request, res: Response) => {
       }
     }
 
-    // TODO: Implement actual rank checking with DataForSEO
-    // For now, return a placeholder response
+    // Get the DataForSEO API key from middleware
+    const apiKey = req.apiKey;
+    if (!apiKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'DataForSEO API key is required'
+      });
+    }
 
-    res.status(202).json({
+    // Default values
+    const engines = searchEngines || ['google'];
+    const devicesArr = devices || ['desktop'];
+    const locationsArr = locations || ['United States'];
+
+    // Validate search engines
+    const validEngines = ['google', 'bing', 'youtube'];
+    for (const engine of engines) {
+      if (!validEngines.includes(engine)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid search engine: ${engine}. Valid options: ${validEngines.join(', ')}`
+        });
+      }
+    }
+
+    // Validate devices
+    const validDevices = ['desktop', 'mobile'];
+    for (const device of devicesArr) {
+      if (!validDevices.includes(device)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid device: ${device}. Valid options: ${validDevices.join(', ')}`
+        });
+      }
+    }
+
+    // Perform rank checks
+    const bulkResult = await performBulkRankChecks(
+      apiKey,
+      userId,
+      keywordIds,
+      engines,
+      devicesArr,
+      locationsArr
+    );
+
+    // Store results in database
+    const storedCount = await storeRankCheckResults(bulkResult.results);
+
+    res.json({
       success: true,
-      message: 'Rank check job queued',
       data: {
-        jobId: `job_${Date.now()}`,
-        keywordCount: keywordIds.length,
-        searchEngines: searchEngines || ['google'],
-        devices: devices || ['desktop'],
-        locations: locations || ['United States'],
-        status: 'queued',
-        note: 'DataForSEO integration pending'
+        totalChecks: bulkResult.success + bulkResult.failed,
+        successfulChecks: bulkResult.success,
+        failedChecks: bulkResult.failed,
+        rankingsStored: storedCount,
+        errors: bulkResult.errors,
+        summary: {
+          keywordCount: keywordIds.length,
+          searchEngines: engines,
+          devices: devicesArr,
+          locations: locationsArr
+        }
       }
     });
   } catch (error: any) {
-    console.error('Error triggering rank check:', error);
+    console.error('Error performing rank check:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to trigger rank check'
+      error: error.message || 'Failed to perform rank check'
     });
   }
 });

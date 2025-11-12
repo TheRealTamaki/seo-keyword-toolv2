@@ -168,3 +168,221 @@ export async function checkCredits(apiKey: string, estimatedCost: number): Promi
     return false;
   }
 }
+
+/**
+ * Interfaces for SERP API
+ */
+export interface SerpTaskOptions {
+  keyword: string;
+  locationName?: string;
+  locationCode?: number;
+  languageCode?: string;
+  device?: 'desktop' | 'mobile';
+  os?: string;
+  depth?: number; // Max 100 results
+}
+
+export interface SerpResult {
+  type: string;
+  rank_group: number;
+  rank_absolute: number;
+  domain: string;
+  title: string;
+  url: string;
+  description?: string;
+  breadcrumb?: string;
+  is_featured_snippet?: boolean;
+  is_paid?: boolean;
+  serp_features?: string[];
+}
+
+export interface SerpResponse {
+  keyword: string;
+  location_code: number;
+  language_code: string;
+  device: string;
+  type: string;
+  se_results_count: number;
+  items: SerpResult[];
+  check_url?: string;
+  datetime: string;
+}
+
+/**
+ * Check SERP rankings for a keyword using Google Organic Live API
+ */
+export async function checkGoogleRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_name: options.locationName || 'United States',
+      language_code: options.languageCode || 'en',
+      device: options.device || 'desktop',
+      os: options.device === 'mobile' ? 'android' : undefined,
+      depth: options.depth || 100,
+      calculate_rectangles: false,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/google/organic/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000, // 60 second timeout for SERP requests
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO SERP API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Check SERP rankings for Bing
+ */
+export async function checkBingRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_name: options.locationName || 'United States',
+      language_code: options.languageCode || 'en',
+      device: options.device || 'desktop',
+      depth: options.depth || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/bing/organic/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO Bing API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Bing API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Bing API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Check SERP rankings for YouTube
+ */
+export async function checkYoutubeRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_code: options.locationCode || 2840, // United States
+      language_code: options.languageCode || 'en',
+      depth: options.depth || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/youtube/video/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO YouTube API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO YouTube API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO YouTube API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Extract SERP features from results
+ */
+export function extractSerpFeatures(items: SerpResult[]): string[] {
+  const features = new Set<string>();
+
+  items.forEach((item) => {
+    // Check item type for SERP features
+    if (item.type) {
+      if (item.type === 'featured_snippet') features.add('featured_snippet');
+      if (item.type === 'people_also_ask') features.add('people_also_ask');
+      if (item.type === 'images') features.add('images');
+      if (item.type === 'video') features.add('video');
+      if (item.type === 'local_pack') features.add('local_pack');
+      if (item.type === 'knowledge_graph') features.add('knowledge_graph');
+      if (item.type === 'shopping') features.add('shopping');
+      if (item.type === 'top_stories') features.add('top_stories');
+    }
+
+    // Check if specific result has featured snippet
+    if (item.is_featured_snippet) {
+      features.add('featured_snippet');
+    }
+  });
+
+  return Array.from(features);
+}
