@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { body, validationResult, ValidationChain } from 'express-validator';
 import { validateEmail, validatePasswordStrength } from '../services/auth.service';
+import { validateDomain, validateProjectName, validateProjectDescription } from '../services/validation.service';
 
 /**
  * Middleware to handle validation results
@@ -118,6 +119,90 @@ export const updateEmailValidation: ValidationChain[] = [
     .custom((value) => {
       if (!validateEmail(value)) {
         throw new Error('Invalid email format');
+      }
+      return true;
+    }),
+];
+
+/**
+ * Validation rules for creating a project
+ */
+export const createProjectValidation: ValidationChain[] = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Project name is required')
+    .custom((value) => {
+      const validation = validateProjectName(value);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
+      return true;
+    }),
+
+  body('domain')
+    .trim()
+    .notEmpty()
+    .withMessage('Domain is required')
+    .custom((value) => {
+      const validation = validateDomain(value);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
+      return true;
+    }),
+
+  body('description')
+    .optional()
+    .trim()
+    .custom((value) => {
+      const validation = validateProjectDescription(value);
+      if (!validation.valid) {
+        throw new Error(validation.errors.join(', '));
+      }
+      return true;
+    }),
+];
+
+/**
+ * Validation rules for updating a project
+ */
+export const updateProjectValidation: ValidationChain[] = [
+  body('name')
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value) {
+        const validation = validateProjectName(value);
+        if (!validation.valid) {
+          throw new Error(validation.errors.join(', '));
+        }
+      }
+      return true;
+    }),
+
+  body('domain')
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value) {
+        const validation = validateDomain(value);
+        if (!validation.valid) {
+          throw new Error(validation.errors.join(', '));
+        }
+      }
+      return true;
+    }),
+
+  body('description')
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value) {
+        const validation = validateProjectDescription(value);
+        if (!validation.valid) {
+          throw new Error(validation.errors.join(', '));
+        }
       }
       return true;
     }),
