@@ -4,7 +4,6 @@ import {
   getKeywordIdeasFromDomain,
   getAutocompleteSuggestions,
   getRelatedKeywords,
-  KeywordSuggestionsOptions,
 } from './dataforseo.service';
 
 export type SearchIntent = 'informational' | 'commercial' | 'transactional' | 'navigational';

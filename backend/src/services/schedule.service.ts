@@ -22,7 +22,7 @@ export async function scheduleRankCheck(config: ScheduleConfig): Promise<Job<Ran
 
   // Get all keywords for the project
   const keywordResult = await getProjectKeywords(projectId, {}, 1, 1000);
-  const keywordIds = keywordResult.keywords.map((k) => k.id);
+  const keywordIds = keywordResult.data.map((k: any) => k.id);
 
   if (keywordIds.length === 0) {
     throw new Error('No keywords found for this project');

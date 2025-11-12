@@ -69,6 +69,7 @@ app.use('/api/rankings', require('./api/rankings.routes'));
 app.use('/api/competitors', require('./api/competitors.routes'));
 app.use('/api/api-keys', require('./api/api-keys.routes'));
 app.use('/api/jobs', require('./api/jobs.routes'));
+app.use('/api/keyword-research', require('./api/keyword-research.routes'));
 
 // 404 handler
 app.use((req, res) => {
