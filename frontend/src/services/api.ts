@@ -97,4 +97,47 @@ export const userService = {
   updateProfile: (data: any) => api.put('/auth/profile', data),
 };
 
+// Keyword Research endpoints
+export const keywordResearchService = {
+  discover: (data: {
+    seeds?: string[];
+    domain?: string;
+    includeAutocomplete?: boolean;
+    includeRelated?: boolean;
+    location?: string;
+    language?: string;
+  }) => api.post('/keyword-research/discover', data),
+  analyze: (data: { keywords: string[]; location?: string; language?: string }) =>
+    api.post('/keyword-research/analyze', data),
+  autocomplete: (params: { keyword: string; location?: string; language?: string }) =>
+    api.get('/keyword-research/autocomplete', { params }),
+  related: (params: { keyword: string; location?: string; language?: string }) =>
+    api.get('/keyword-research/related', { params }),
+  domain: (params: { domain: string; location?: string; limit?: number }) =>
+    api.get('/keyword-research/domain', { params }),
+  filter: (data: any) => api.post('/keyword-research/filter', data),
+  insights: (data: { keywords: any[] }) => api.post('/keyword-research/insights', data),
+};
+
+// Keyword Lists endpoints
+export const keywordListsService = {
+  getAll: (params?: any) => api.get('/keyword-lists', { params }),
+  getById: (id: string) => api.get(`/keyword-lists/${id}`),
+  create: (data: { name: string; description?: string; projectId?: string }) =>
+    api.post('/keyword-lists', data),
+  update: (id: string, data: any) => api.put(`/keyword-lists/${id}`, data),
+  delete: (id: string) => api.delete(`/keyword-lists/${id}`),
+  addKeywords: (id: string, data: { keywords: any[] }) =>
+    api.post(`/keyword-lists/${id}/keywords`, data),
+  getKeywords: (id: string, params?: any) =>
+    api.get(`/keyword-lists/${id}/keywords`, { params }),
+  updateKeyword: (listId: string, itemId: string, data: any) =>
+    api.patch(`/keyword-lists/${listId}/keywords/${itemId}`, data),
+  deleteKeyword: (listId: string, itemId: string) =>
+    api.delete(`/keyword-lists/${listId}/keywords/${itemId}`),
+  bulkDeleteKeywords: (listId: string, data: { itemIds: string[] }) =>
+    api.post(`/keyword-lists/${listId}/keywords/bulk-delete`, data),
+  export: (id: string) => api.get(`/keyword-lists/${id}/export`),
+};
+
 export default api;

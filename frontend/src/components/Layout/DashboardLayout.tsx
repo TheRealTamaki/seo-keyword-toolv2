@@ -12,6 +12,7 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Projects', href: '/projects', icon: FolderIcon },
   { name: 'Keywords', href: '/keywords', icon: MagnifyingGlassIcon },
+  { name: 'Research', href: '/research', icon: SparklesIcon },
   { name: 'Rankings', href: '/rankings', icon: ChartBarIcon },
   { name: 'Competitors', href: '/competitors', icon: ChartBarIcon },
   { name: 'Reports', href: '/reports', icon: DocumentTextIcon },

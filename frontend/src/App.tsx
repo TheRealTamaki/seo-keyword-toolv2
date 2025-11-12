@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Settings from './pages/Settings';
 import Keywords from './pages/Keywords';
+import KeywordResearch from './pages/KeywordResearch';
 
 // Placeholder pages (to be implemented)
 const Rankings: React.FC = () => <div className="p-6">Rankings Page - Coming Soon</div>;
@@ -76,6 +77,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Keywords />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/research"
+            element={
+              <ProtectedRoute>
+                <KeywordResearch />
               </ProtectedRoute>
             }
           />
