@@ -386,3 +386,283 @@ export function extractSerpFeatures(items: SerpResult[]): string[] {
 
   return Array.from(features);
 }
+
+/**
+ * Interfaces for Keyword Research API
+ */
+export interface KeywordIdea {
+  keyword: string;
+  searchVolume: number;
+  cpc: number;
+  competition: number;
+  difficulty: number;
+  trends?: number[];
+}
+
+export interface KeywordSuggestionsOptions {
+  keywords: string[];
+  locationName?: string;
+  locationCode?: number;
+  languageCode?: string;
+  includeAdults?: boolean;
+  limit?: number;
+}
+
+export interface KeywordSuggestionsResponse {
+  keyword: string;
+  suggestions: KeywordIdea[];
+  totalCount: number;
+}
+
+/**
+ * Get keyword suggestions for seed keywords
+ * Uses Google Ads API via DataForSEO
+ */
+export async function getKeywordSuggestions(
+  apiKey: string,
+  options: KeywordSuggestionsOptions
+): Promise<KeywordSuggestionsResponse[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = options.keywords.map((keyword) => ({
+    keyword,
+    location_code: options.locationCode || 2840, // United States
+    language_code: options.languageCode || 'en',
+    include_adult_keywords: options.includeAdults || false,
+    sort_by: 'search_volume',
+    limit: options.limit || 1000,
+  }));
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/keywords_for_keywords/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (!response.data?.tasks) {
+      throw new Error('Invalid response from DataForSEO API');
+    }
+
+    return response.data.tasks.map((task: any) => {
+      const result = task.result?.[0];
+      if (!result) {
+        return {
+          keyword: task.data?.keyword || '',
+          suggestions: [],
+          totalCount: 0,
+        };
+      }
+
+      const suggestions: KeywordIdea[] = (result.items || []).map((item: any) => ({
+        keyword: item.keyword,
+        searchVolume: item.search_volume || 0,
+        cpc: item.cpc || 0,
+        competition: item.competition || 0,
+        difficulty: item.keyword_difficulty || 0,
+        trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+      }));
+
+      return {
+        keyword: result.keyword || task.data?.keyword || '',
+        suggestions,
+        totalCount: result.total_count || suggestions.length,
+      };
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Keyword API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Keyword API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get keyword ideas based on a website domain
+ */
+export async function getKeywordIdeasFromDomain(
+  apiKey: string,
+  domain: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+    limit?: number;
+  } = {}
+): Promise<KeywordIdea[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      target: domain,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+      sort_by: 'search_volume',
+      limit: options.limit || 1000,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/keywords_for_site/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result) {
+      return [];
+    }
+
+    return (result.items || []).map((item: any) => ({
+      keyword: item.keyword,
+      searchVolume: item.search_volume || 0,
+      cpc: item.cpc || 0,
+      competition: item.competition || 0,
+      difficulty: item.keyword_difficulty || 0,
+      trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+    }));
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Keyword from Domain API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Keyword from Domain API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get autocomplete suggestions (Google autocomplete)
+ */
+export async function getAutocompleteSuggestions(
+  apiKey: string,
+  keyword: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+  } = {}
+): Promise<string[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google/suggestions/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result || !result.items) {
+      return [];
+    }
+
+    return result.items.map((item: any) => item.keyword).filter(Boolean);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Autocomplete API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Autocomplete API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get related keywords using DataForSEO's related keywords API
+ */
+export async function getRelatedKeywords(
+  apiKey: string,
+  keyword: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+    limit?: number;
+  } = {}
+): Promise<KeywordIdea[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+      depth: 1,
+      limit: options.limit || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/search_volume/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result) {
+      return [];
+    }
+
+    return (result.items || []).map((item: any) => ({
+      keyword: item.keyword,
+      searchVolume: item.search_volume || 0,
+      cpc: item.cpc || 0,
+      competition: item.competition || 0,
+      difficulty: 0, // Not provided by this endpoint
+      trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+    }));
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Related Keywords API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Related Keywords API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
