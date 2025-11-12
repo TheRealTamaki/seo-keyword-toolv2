@@ -64,8 +64,22 @@ export const keywordsService = {
 
 // Rankings endpoints
 export const rankingsService = {
-  getByKeyword: (keywordId: string) => api.get(`/rankings/${keywordId}`),
-  check: (data: any) => api.post('/rankings/check', data),
+  getHistory: (keywordId: string, params?: { startDate?: string; endDate?: string; limit?: number }) =>
+    api.get(`/rankings/keyword/${keywordId}/history`, { params }),
+  getLatest: (keywordId: string) => api.get(`/rankings/keyword/${keywordId}/latest`),
+  getChanges: (keywordId: string, params?: { days?: number }) =>
+    api.get(`/rankings/keyword/${keywordId}/changes`, { params }),
+  getCompetitors: (keywordId: string) => api.get(`/rankings/keyword/${keywordId}/competitors`),
+  getSerpFeatures: (keywordId: string, params?: { limit?: number }) =>
+    api.get(`/rankings/keyword/${keywordId}/serp-features`, { params }),
+  getAverage: (keywordId: string, params?: { startDate?: string; endDate?: string }) =>
+    api.get(`/rankings/keyword/${keywordId}/average`, { params }),
+  check: (data: {
+    keywords: string[];
+    searchEngine?: string;
+    device?: string;
+    location?: string;
+  }) => api.post('/rankings/check', data),
 };
 
 // Competitors endpoints

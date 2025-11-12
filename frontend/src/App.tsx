@@ -14,9 +14,9 @@ import Projects from './pages/Projects';
 import Settings from './pages/Settings';
 import Keywords from './pages/Keywords';
 import KeywordResearch from './pages/KeywordResearch';
+import Rankings from './pages/Rankings';
 
 // Placeholder pages (to be implemented)
-const Rankings: React.FC = () => <div className="p-6">Rankings Page - Coming Soon</div>;
 const Competitors: React.FC = () => <div className="p-6">Competitors Page - Coming Soon</div>;
 const Reports: React.FC = () => <div className="p-6">Reports Page - Coming Soon</div>;
 const Alerts: React.FC = () => <div className="p-6">Alerts Page - Coming Soon</div>;
