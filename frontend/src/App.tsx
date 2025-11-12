@@ -12,9 +12,9 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Settings from './pages/Settings';
+import Keywords from './pages/Keywords';
 
 // Placeholder pages (to be implemented)
-const Keywords: React.FC = () => <div className="p-6">Keywords Page - Coming Soon</div>;
 const Rankings: React.FC = () => <div className="p-6">Rankings Page - Coming Soon</div>;
 const Competitors: React.FC = () => <div className="p-6">Competitors Page - Coming Soon</div>;
 const Reports: React.FC = () => <div className="p-6">Reports Page - Coming Soon</div>;

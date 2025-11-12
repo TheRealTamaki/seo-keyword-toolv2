@@ -50,9 +50,16 @@ export const projectsService = {
 
 // Keywords endpoints
 export const keywordsService = {
-  getByProject: (projectId: string) => api.get(`/keywords/${projectId}`),
+  getByProject: (projectId: string, params?: any) =>
+    api.get(`/keywords/project/${projectId}`, { params }),
+  getById: (id: string) => api.get(`/keywords/${id}`),
   create: (data: any) => api.post('/keywords', data),
+  bulkCreate: (data: any[]) => api.post('/keywords/bulk', { keywords: data }),
+  update: (id: string, data: any) => api.put(`/keywords/${id}`, data),
   delete: (id: string) => api.delete(`/keywords/${id}`),
+  getUntracked: (projectId: string) => api.get(`/keywords/project/${projectId}/untracked`),
+  getWithRankings: (projectId: string, params?: any) =>
+    api.get(`/keywords/project/${projectId}/rankings`, { params }),
 };
 
 // Rankings endpoints
