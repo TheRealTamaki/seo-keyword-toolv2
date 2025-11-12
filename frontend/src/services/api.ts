@@ -89,6 +89,22 @@ export const competitorsService = {
   delete: (id: string) => api.delete(`/competitors/${id}`),
 };
 
+// Competitor Analysis endpoints
+export const competitorAnalysisService = {
+  getKeywordGap: (projectId: string, params?: { competitorId?: string }) =>
+    api.get(`/competitor-analysis/keyword-gap/${projectId}`, { params }),
+  getVisibility: (projectId: string, params?: { competitorId?: string }) =>
+    api.get(`/competitor-analysis/visibility/${projectId}`, { params }),
+  getQuickWins: (projectId: string, params?: { competitorId?: string; limit?: number }) =>
+    api.get(`/competitor-analysis/quick-wins/${projectId}`, { params }),
+  discoverKeywords: (data: { domain: string; location?: string; limit?: number }) =>
+    api.post('/competitor-analysis/discover-keywords', data),
+  getOpportunities: (projectId: string, params?: { competitorId?: string }) =>
+    api.get(`/competitor-analysis/opportunities/${projectId}`, { params }),
+  getOverlap: (projectId: string, params?: { competitorId?: string }) =>
+    api.get(`/competitor-analysis/overlap/${projectId}`, { params }),
+};
+
 // API Keys endpoints
 export const apiKeysService = {
   get: () => api.get('/api-keys'),
