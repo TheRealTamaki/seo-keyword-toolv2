@@ -98,12 +98,8 @@ export async function performRankCheck(
     depth: 100, // Check top 100 results
   };
 
-  // Set location based on search engine
-  if (request.searchEngine === 'youtube') {
-    options.locationCode = request.locationCode || 2840; // Default to United States
-  } else {
-    options.locationName = request.location;
-  }
+  // Set location (use location code for all search engines)
+  options.locationCode = request.locationCode || 2840; // Default to United States
 
   if (request.languageCode) {
     options.languageCode = request.languageCode;
