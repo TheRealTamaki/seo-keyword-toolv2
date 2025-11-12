@@ -70,11 +70,24 @@ export const competitorsService = {
 
 // API Keys endpoints
 export const apiKeysService = {
-  get: (userId: string) => api.get(`/api-keys/${userId}`),
-  create: (data: any) => api.post('/api-keys', data),
-  update: (id: string, data: any) => api.put(`/api-keys/${id}`, data),
+  get: () => api.get('/api-keys'),
+  create: (data: { provider: string; apiKey: string; apiPassword?: string }) =>
+    api.post('/api-keys', data),
   delete: (id: string) => api.delete(`/api-keys/${id}`),
-  validate: (id: string) => api.post(`/api-keys/${id}/validate`),
+  validate: (data: { provider: string; apiKey: string; apiPassword?: string }) =>
+    api.post('/api-keys/validate', data),
+};
+
+// Notification Preferences endpoints
+export const notificationPreferencesService = {
+  get: () => api.get('/alerts/preferences/settings'),
+  update: (data: any) => api.put('/alerts/preferences/settings', data),
+};
+
+// User endpoints
+export const userService = {
+  getProfile: () => api.get('/auth/me'),
+  updateProfile: (data: any) => api.put('/auth/profile', data),
 };
 
 export default api;
