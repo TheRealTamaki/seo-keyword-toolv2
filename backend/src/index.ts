@@ -70,6 +70,7 @@ app.use('/api/competitors', require('./api/competitors.routes'));
 app.use('/api/api-keys', require('./api/api-keys.routes'));
 app.use('/api/jobs', require('./api/jobs.routes'));
 app.use('/api/keyword-research', require('./api/keyword-research.routes'));
+app.use('/api/keyword-lists', require('./api/keyword-lists.routes'));
 
 // 404 handler
 app.use((req, res) => {
