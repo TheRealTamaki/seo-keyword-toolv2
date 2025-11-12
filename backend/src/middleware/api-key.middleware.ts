@@ -4,6 +4,7 @@ import * as ApiKeyModel from '../models/api-key.model';
 /**
  * Middleware to ensure user has an active API key
  * Should be used after authenticate middleware
+ * Attaches the decrypted API key to req.apiKey
  */
 export async function requireApiKey(
   req: Request,
@@ -21,9 +22,10 @@ export async function requireApiKey(
       return;
     }
 
-    const hasApiKey = await ApiKeyModel.hasActiveApiKey(userId);
+    // Get the decrypted API key
+    const apiKey = await ApiKeyModel.getDecryptedApiKey(userId);
 
-    if (!hasApiKey) {
+    if (!apiKey) {
       res.status(403).json({
         success: false,
         error: 'DataForSEO API key required',
@@ -31,6 +33,9 @@ export async function requireApiKey(
       });
       return;
     }
+
+    // Attach the decrypted API key to the request
+    req.apiKey = apiKey;
 
     next();
   } catch (error) {

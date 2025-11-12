@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { initializeDatabase, closeDatabase, healthCheck as dbHealthCheck } from './config/database';
 import { initializeRedis, closeRedis, healthCheck as redisHealthCheck } from './config/redis';
 import { initializeSupabase, healthCheck as supabaseHealthCheck } from './config/supabase';
+import { initializeQueues, closeQueues } from './config/queue';
+import { initializeWorkers } from './jobs/worker';
 
 // Load environment variables
 dotenv.config();
@@ -59,13 +61,20 @@ app.get('/health/detailed', async (req, res) => {
   });
 });
 
-// API routes (to be implemented)
+// API routes
 app.use('/api/auth', require('./api/auth.routes'));
 app.use('/api/projects', require('./api/projects.routes'));
 app.use('/api/keywords', require('./api/keywords.routes'));
 app.use('/api/rankings', require('./api/rankings.routes'));
 app.use('/api/competitors', require('./api/competitors.routes'));
 app.use('/api/api-keys', require('./api/api-keys.routes'));
+app.use('/api/jobs', require('./api/jobs.routes'));
+app.use('/api/keyword-research', require('./api/keyword-research.routes'));
+app.use('/api/keyword-lists', require('./api/keyword-lists.routes'));
+app.use('/api/competitor-analysis', require('./api/competitor-analysis.routes'));
+app.use('/api/alerts', require('./api/alerts.routes'));
+app.use('/api/exports', require('./api/exports.routes'));
+app.use('/api/reports', require('./api/reports.routes'));
 
 // 404 handler
 app.use((req, res) => {
@@ -89,10 +98,15 @@ async function start() {
     await initializeRedis();
     await initializeSupabase();
 
+    // Initialize job queues and workers
+    initializeQueues();
+    initializeWorkers();
+
     // Start listening
     app.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log('✓ Job queue and workers initialized');
     });
   } catch (error) {
     console.error('Failed to start server:', error);
@@ -103,6 +117,7 @@ async function start() {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n\nShutting down gracefully...');
+  await closeQueues();
   await closeDatabase();
   await closeRedis();
   process.exit(0);

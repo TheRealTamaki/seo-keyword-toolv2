@@ -168,3 +168,501 @@ export async function checkCredits(apiKey: string, estimatedCost: number): Promi
     return false;
   }
 }
+
+/**
+ * Interfaces for SERP API
+ */
+export interface SerpTaskOptions {
+  keyword: string;
+  locationName?: string;
+  locationCode?: number;
+  languageCode?: string;
+  device?: 'desktop' | 'mobile';
+  os?: string;
+  depth?: number; // Max 100 results
+}
+
+export interface SerpResult {
+  type: string;
+  rank_group: number;
+  rank_absolute: number;
+  domain: string;
+  title: string;
+  url: string;
+  description?: string;
+  breadcrumb?: string;
+  is_featured_snippet?: boolean;
+  is_paid?: boolean;
+  serp_features?: string[];
+}
+
+export interface SerpResponse {
+  keyword: string;
+  location_code: number;
+  language_code: string;
+  device: string;
+  type: string;
+  se_results_count: number;
+  items: SerpResult[];
+  check_url?: string;
+  datetime: string;
+}
+
+/**
+ * Check SERP rankings for a keyword using Google Organic Live API
+ */
+export async function checkGoogleRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_name: options.locationName || 'United States',
+      language_code: options.languageCode || 'en',
+      device: options.device || 'desktop',
+      os: options.device === 'mobile' ? 'android' : undefined,
+      depth: options.depth || 100,
+      calculate_rectangles: false,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/google/organic/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000, // 60 second timeout for SERP requests
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO SERP API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Check SERP rankings for Bing
+ */
+export async function checkBingRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_name: options.locationName || 'United States',
+      language_code: options.languageCode || 'en',
+      device: options.device || 'desktop',
+      depth: options.depth || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/bing/organic/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO Bing API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Bing API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Bing API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Check SERP rankings for YouTube
+ */
+export async function checkYoutubeRankings(
+  apiKey: string,
+  options: SerpTaskOptions
+): Promise<SerpResponse> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword: options.keyword,
+      location_code: options.locationCode || 2840, // United States
+      language_code: options.languageCode || 'en',
+      depth: options.depth || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/serp/youtube/video/live/advanced`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      return response.data.tasks[0].result[0];
+    }
+
+    throw new Error('Invalid response from DataForSEO YouTube API');
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO YouTube API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO YouTube API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Extract SERP features from results
+ */
+export function extractSerpFeatures(items: SerpResult[]): string[] {
+  const features = new Set<string>();
+
+  items.forEach((item) => {
+    // Check item type for SERP features
+    if (item.type) {
+      if (item.type === 'featured_snippet') features.add('featured_snippet');
+      if (item.type === 'people_also_ask') features.add('people_also_ask');
+      if (item.type === 'images') features.add('images');
+      if (item.type === 'video') features.add('video');
+      if (item.type === 'local_pack') features.add('local_pack');
+      if (item.type === 'knowledge_graph') features.add('knowledge_graph');
+      if (item.type === 'shopping') features.add('shopping');
+      if (item.type === 'top_stories') features.add('top_stories');
+    }
+
+    // Check if specific result has featured snippet
+    if (item.is_featured_snippet) {
+      features.add('featured_snippet');
+    }
+  });
+
+  return Array.from(features);
+}
+
+/**
+ * Interfaces for Keyword Research API
+ */
+export interface KeywordIdea {
+  keyword: string;
+  searchVolume: number;
+  cpc: number;
+  competition: number;
+  difficulty: number;
+  trends?: number[];
+}
+
+export interface KeywordSuggestionsOptions {
+  keywords: string[];
+  locationName?: string;
+  locationCode?: number;
+  languageCode?: string;
+  includeAdults?: boolean;
+  limit?: number;
+}
+
+export interface KeywordSuggestionsResponse {
+  keyword: string;
+  suggestions: KeywordIdea[];
+  totalCount: number;
+}
+
+/**
+ * Get keyword suggestions for seed keywords
+ * Uses Google Ads API via DataForSEO
+ */
+export async function getKeywordSuggestions(
+  apiKey: string,
+  options: KeywordSuggestionsOptions
+): Promise<KeywordSuggestionsResponse[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = options.keywords.map((keyword) => ({
+    keyword,
+    location_code: options.locationCode || 2840, // United States
+    language_code: options.languageCode || 'en',
+    include_adult_keywords: options.includeAdults || false,
+    sort_by: 'search_volume',
+    limit: options.limit || 1000,
+  }));
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/keywords_for_keywords/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    if (!response.data?.tasks) {
+      throw new Error('Invalid response from DataForSEO API');
+    }
+
+    return response.data.tasks.map((task: any) => {
+      const result = task.result?.[0];
+      if (!result) {
+        return {
+          keyword: task.data?.keyword || '',
+          suggestions: [],
+          totalCount: 0,
+        };
+      }
+
+      const suggestions: KeywordIdea[] = (result.items || []).map((item: any) => ({
+        keyword: item.keyword,
+        searchVolume: item.search_volume || 0,
+        cpc: item.cpc || 0,
+        competition: item.competition || 0,
+        difficulty: item.keyword_difficulty || 0,
+        trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+      }));
+
+      return {
+        keyword: result.keyword || task.data?.keyword || '',
+        suggestions,
+        totalCount: result.total_count || suggestions.length,
+      };
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Keyword API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Keyword API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get keyword ideas based on a website domain
+ */
+export async function getKeywordIdeasFromDomain(
+  apiKey: string,
+  domain: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+    limit?: number;
+  } = {}
+): Promise<KeywordIdea[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      target: domain,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+      sort_by: 'search_volume',
+      limit: options.limit || 1000,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/keywords_for_site/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result) {
+      return [];
+    }
+
+    return (result.items || []).map((item: any) => ({
+      keyword: item.keyword,
+      searchVolume: item.search_volume || 0,
+      cpc: item.cpc || 0,
+      competition: item.competition || 0,
+      difficulty: item.keyword_difficulty || 0,
+      trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+    }));
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Keyword from Domain API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Keyword from Domain API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get autocomplete suggestions (Google autocomplete)
+ */
+export async function getAutocompleteSuggestions(
+  apiKey: string,
+  keyword: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+  } = {}
+): Promise<string[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google/suggestions/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result || !result.items) {
+      return [];
+    }
+
+    return result.items.map((item: any) => item.keyword).filter(Boolean);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Autocomplete API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Autocomplete API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get related keywords using DataForSEO's related keywords API
+ */
+export async function getRelatedKeywords(
+  apiKey: string,
+  keyword: string,
+  options: {
+    locationCode?: number;
+    languageCode?: string;
+    limit?: number;
+  } = {}
+): Promise<KeywordIdea[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const payload = [
+    {
+      keyword,
+      location_code: options.locationCode || 2840,
+      language_code: options.languageCode || 'en',
+      depth: 1,
+      limit: options.limit || 100,
+    },
+  ];
+
+  try {
+    const response = await axios.post(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/search_volume/live`,
+      payload,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    const result = response.data?.tasks?.[0]?.result?.[0];
+    if (!result) {
+      return [];
+    }
+
+    return (result.items || []).map((item: any) => ({
+      keyword: item.keyword,
+      searchVolume: item.search_volume || 0,
+      cpc: item.cpc || 0,
+      competition: item.competition || 0,
+      difficulty: 0, // Not provided by this endpoint
+      trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
+    }));
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('DataForSEO Related Keywords API error:', axiosError.response?.data || axiosError.message);
+      throw new Error(`DataForSEO Related Keywords API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
