@@ -73,6 +73,8 @@ app.use('/api/keyword-research', require('./api/keyword-research.routes'));
 app.use('/api/keyword-lists', require('./api/keyword-lists.routes'));
 app.use('/api/competitor-analysis', require('./api/competitor-analysis.routes'));
 app.use('/api/alerts', require('./api/alerts.routes'));
+app.use('/api/exports', require('./api/exports.routes'));
+app.use('/api/reports', require('./api/reports.routes'));
 
 // 404 handler
 app.use((req, res) => {
