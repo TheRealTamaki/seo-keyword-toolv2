@@ -1,11 +1,13 @@
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 
-let redisClient: RedisClientType | null = null;
+type RedisClient = ReturnType<typeof createClient>;
+
+let redisClient: RedisClient | null = null;
 
 /**
  * Initialize Redis connection with retry logic
  */
-export async function initializeRedis(retries = 5, delay = 3000): Promise<RedisClientType> {
+export async function initializeRedis(retries = 5, delay = 3000): Promise<RedisClient> {
   const client = createClient({
     socket: {
       host: process.env.REDIS_HOST || 'localhost',
@@ -79,7 +81,7 @@ export async function initializeRedis(retries = 5, delay = 3000): Promise<RedisC
 /**
  * Get Redis client instance
  */
-export function getRedisClient(): RedisClientType {
+export function getRedisClient(): RedisClient {
   if (!redisClient) {
     throw new Error('Redis client not initialized. Call initializeRedis() first.');
   }

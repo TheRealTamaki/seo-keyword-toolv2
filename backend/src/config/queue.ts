@@ -1,5 +1,4 @@
 import Bull, { Queue, QueueOptions } from 'bull';
-import { redisClient } from './redis';
 
 // Queue configuration
 const queueOptions: QueueOptions = {

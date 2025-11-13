@@ -12,7 +12,7 @@ import {
   listScheduledJobs,
   ScheduleConfig,
 } from '../services/schedule.service';
-import { getQueueStats, cleanOldJobs } from '../config/queue';
+import { getQueueStats } from '../config/queue';
 
 const router = Router();
 

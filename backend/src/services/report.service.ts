@@ -42,7 +42,7 @@ export type ReportType =
 export async function generateHTMLReport(
   reportType: ReportType,
   data: ReportData,
-  _config: ReportConfig = {}
+  config: ReportConfig = {}
 ): Promise<string> {
   const {
     title = 'SEO Report',
@@ -274,7 +274,7 @@ export async function generateHTMLReport(
 function generateReportContent(
   reportType: ReportType,
   data: ReportData,
-  _config: ReportConfig
+  config: ReportConfig
 ): string {
   switch (reportType) {
     case 'ranking_performance':
@@ -297,7 +297,7 @@ function generateReportContent(
 /**
  * Generate ranking performance report content
  */
-function generateRankingPerformanceContent(data: ReportData, _config: ReportConfig): string {
+function generateRankingPerformanceContent(data: ReportData, config: ReportConfig): string {
   const { summary = {}, rankings = [] } = data;
 
   return `
@@ -564,7 +564,7 @@ function generateProjectOverviewContent(data: ReportData, _config: ReportConfig)
  */
 export async function fetchReportData(
   reportType: ReportType,
-  _projectId: string,
+  projectId: string,
   dateRange?: { start: Date; end: Date }
 ): Promise<ReportData> {
   const data: ReportData = {};
@@ -601,7 +601,7 @@ export async function fetchReportData(
 }
 
 // Helper functions to fetch specific data
-async function fetchRankingData(_projectId: string, dateRange?: any) {
+async function fetchRankingData(projectId: string, dateRange?: any) {
   const query = `
     SELECT k.keyword, k.search_volume, r.position, r.url, r.checked_at
     FROM rankings r
@@ -640,7 +640,7 @@ async function fetchVisibilityData(projectId: string) {
   return [];
 }
 
-async function calculateRankingSummary(_projectId: string, dateRange?: any) {
+async function calculateRankingSummary(projectId: string, dateRange?: any) {
   const query = `
     SELECT
       COUNT(DISTINCT k.id) as "totalKeywords",

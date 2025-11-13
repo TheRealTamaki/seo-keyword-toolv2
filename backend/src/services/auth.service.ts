@@ -1,5 +1,5 @@
-import { supabase, supabaseAdmin } from '../config/supabase';
-import { AuthResponse, User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { supabase } from '../config/supabase';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import * as UserModel from '../models/user.model';
 
 export interface RegisterInput {
@@ -134,7 +134,7 @@ export async function verifyToken(token: string): Promise<SupabaseUser> {
  * Change user password with Supabase
  */
 export async function changePassword(
-  accessToken: string,
+  _accessToken: string,
   newPassword: string
 ): Promise<void> {
   // Validate password strength
@@ -169,7 +169,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
 /**
  * Verify email with token
  */
-export async function verifyEmail(token: string, email: string): Promise<void> {
+export async function verifyEmail(token: string, _email: string): Promise<void> {
   const { error } = await supabase.auth.verifyOtp({
     token_hash: token,
     type: 'email',
@@ -216,7 +216,7 @@ async function syncUserToDatabase(supabaseUser: SupabaseUser): Promise<void> {
 /**
  * Get user session from access token
  */
-export async function getSession(accessToken: string): Promise<Session | null> {
+export async function getSession(_accessToken: string): Promise<Session | null> {
   const { data, error } = await supabase.auth.getSession();
 
   if (error || !data.session) {
