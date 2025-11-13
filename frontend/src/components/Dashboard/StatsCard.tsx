@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
+import Sparkline, { SparklineData } from '../Charts/Sparkline';
 
 interface StatsCardProps {
   name: string;
@@ -12,6 +13,8 @@ interface StatsCardProps {
     value: number;
     label: string;
   };
+  sparklineData?: SparklineData[];
+  sparklineColor?: string;
 }
 
 const StatsCard: React.FC<StatsCardProps> = ({
@@ -21,22 +24,61 @@ const StatsCard: React.FC<StatsCardProps> = ({
   href,
   color = 'bg-primary-500',
   change,
+  sparklineData,
+  sparklineColor,
 }) => {
   const CardContent = () => (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{name}</p>
           <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+        </div>
+        <div className={`${color} p-3 rounded-lg flex-shrink-0`}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+      </div>
+
+      {/* Change indicator or sparkline */}
+      {change && !sparklineData && (
+        <div className="flex items-center">
+          {change.value > 0 ? (
+            <ArrowUpIcon className="h-4 w-4 text-green-600 mr-1" />
+          ) : change.value < 0 ? (
+            <ArrowDownIcon className="h-4 w-4 text-red-600 mr-1" />
+          ) : null}
+          <span
+            className={`text-sm font-medium ${
+              change.value > 0
+                ? 'text-green-600'
+                : change.value < 0
+                ? 'text-red-600'
+                : 'text-gray-600'
+            }`}
+          >
+            {Math.abs(change.value)}% {change.label}
+          </span>
+        </div>
+      )}
+
+      {/* Sparkline chart */}
+      {sparklineData && sparklineData.length > 0 && (
+        <div className="mt-2">
+          <Sparkline
+            data={sparklineData}
+            color={sparklineColor}
+            height={40}
+            className="w-full"
+          />
           {change && (
-            <div className="mt-2 flex items-center">
+            <div className="flex items-center mt-1">
               {change.value > 0 ? (
-                <ArrowUpIcon className="h-4 w-4 text-green-600 mr-1" />
+                <ArrowUpIcon className="h-3 w-3 text-green-600 mr-1" />
               ) : change.value < 0 ? (
-                <ArrowDownIcon className="h-4 w-4 text-red-600 mr-1" />
+                <ArrowDownIcon className="h-3 w-3 text-red-600 mr-1" />
               ) : null}
               <span
-                className={`text-sm font-medium ${
+                className={`text-xs font-medium ${
                   change.value > 0
                     ? 'text-green-600'
                     : change.value < 0
@@ -49,10 +91,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
             </div>
           )}
         </div>
-        <div className={`${color} p-3 rounded-lg flex-shrink-0`}>
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-      </div>
+      )}
     </>
   );
 

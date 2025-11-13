@@ -9,12 +9,14 @@ export { default as AreaChart } from './AreaChart';
 export { default as BarChart } from './BarChart';
 export { default as PieChart } from './PieChart';
 export { default as ChartContainer } from './ChartContainer';
+export { default as Sparkline } from './Sparkline';
 
 // Types
 export type { LineChartData, LineChartSeries } from './LineChart';
 export type { AreaChartData, AreaChartSeries } from './AreaChart';
 export type { BarChartData, BarChartSeries } from './BarChart';
 export type { PieChartData } from './PieChart';
+export type { SparklineData } from './Sparkline';
 
 // Theme and utilities
 export { chartTheme, getSeriesColor, getGradientId, formatChartNumber, formatChartCurrency, formatChartPercentage, getRankColor, getChangeColor } from './chartTheme';
