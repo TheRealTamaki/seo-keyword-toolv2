@@ -174,7 +174,7 @@ export async function checkCredits(apiKey: string, estimatedCost: number): Promi
  */
 export interface SerpTaskOptions {
   keyword: string;
-  locationName?: string;
+  locationName?: string; // Deprecated: use locationCode instead
   locationCode?: number;
   languageCode?: string;
   device?: 'desktop' | 'mobile';
@@ -220,7 +220,7 @@ export async function checkGoogleRankings(
   const payload = [
     {
       keyword: options.keyword,
-      location_name: options.locationName || 'United States',
+      location_code: options.locationCode || 2840, // Default to United States
       language_code: options.languageCode || 'en',
       device: options.device || 'desktop',
       os: options.device === 'mobile' ? 'android' : undefined,
@@ -272,7 +272,7 @@ export async function checkBingRankings(
   const payload = [
     {
       keyword: options.keyword,
-      location_name: options.locationName || 'United States',
+      location_code: options.locationCode || 2840, // Default to United States
       language_code: options.languageCode || 'en',
       device: options.device || 'desktop',
       depth: options.depth || 100,
@@ -330,7 +330,7 @@ export async function checkYoutubeRankings(
 
   try {
     const response = await axios.post(
-      `${DATAFORSEO_API_BASE}/serp/youtube/video/live/advanced`,
+      `${DATAFORSEO_API_BASE}/serp/youtube/organic/live/advanced`,
       payload,
       {
         auth: {
@@ -574,7 +574,7 @@ export async function getAutocompleteSuggestions(
 
   try {
     const response = await axios.post(
-      `${DATAFORSEO_API_BASE}/keywords_data/google/suggestions/live`,
+      `${DATAFORSEO_API_BASE}/serp/google/autocomplete/live/advanced`,
       payload,
       {
         auth: {
@@ -593,7 +593,9 @@ export async function getAutocompleteSuggestions(
       return [];
     }
 
-    return result.items.map((item: any) => item.keyword).filter(Boolean);
+    return result.items
+      .map((item: any) => item.keyword || item.title)
+      .filter(Boolean);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
@@ -605,7 +607,8 @@ export async function getAutocompleteSuggestions(
 }
 
 /**
- * Get related keywords using DataForSEO's related keywords API
+ * Get related keywords using DataForSEO's Keywords For Keywords API
+ * This reuses the same endpoint as getKeywordSuggestions for cost efficiency
  */
 export async function getRelatedKeywords(
   apiKey: string,
@@ -623,14 +626,15 @@ export async function getRelatedKeywords(
       keyword,
       location_code: options.locationCode || 2840,
       language_code: options.languageCode || 'en',
-      depth: 1,
+      include_adult_keywords: false,
+      sort_by: 'search_volume',
       limit: options.limit || 100,
     },
   ];
 
   try {
     const response = await axios.post(
-      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/search_volume/live`,
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/keywords_for_keywords/live`,
       payload,
       {
         auth: {
@@ -654,7 +658,7 @@ export async function getRelatedKeywords(
       searchVolume: item.search_volume || 0,
       cpc: item.cpc || 0,
       competition: item.competition || 0,
-      difficulty: 0, // Not provided by this endpoint
+      difficulty: item.keyword_difficulty || 0,
       trends: item.monthly_searches?.map((m: any) => m.search_volume) || [],
     }));
   } catch (error) {
@@ -662,6 +666,173 @@ export async function getRelatedKeywords(
       const axiosError = error as AxiosError;
       console.error('DataForSEO Related Keywords API error:', axiosError.response?.data || axiosError.message);
       throw new Error(`DataForSEO Related Keywords API error: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Check DataForSEO response for errors
+ * DataForSEO returns structured error codes:
+ * - 20000: Success
+ * - 40xxx: Client errors (bad request, auth, etc.)
+ * - 50xxx: Server errors
+ */
+export function checkDataForSEOResponse(response: any): void {
+  if (!response.data) {
+    throw new Error('Invalid response from DataForSEO API');
+  }
+
+  // Check for API-level status code
+  const statusCode = response.data.status_code;
+  if (statusCode && statusCode !== 20000) {
+    const statusMessage = response.data.status_message || 'Unknown error';
+    throw new Error(`DataForSEO API error (${statusCode}): ${statusMessage}`);
+  }
+
+  // Check task-level status
+  if (response.data.tasks && response.data.tasks[0]) {
+    const task = response.data.tasks[0];
+    if (task.status_code && task.status_code !== 20000) {
+      const taskMessage = task.status_message || 'Unknown task error';
+      throw new Error(`DataForSEO task error (${task.status_code}): ${taskMessage}`);
+    }
+  }
+}
+
+/**
+ * Check when Google Ads keyword data was last updated
+ * Google typically updates keyword data in the middle of each month
+ * If data was updated in October, you'll see September's data
+ */
+export async function checkGoogleAdsStatus(apiKey: string): Promise<{
+  updated: boolean;
+  updateDate: string | null;
+  message: string;
+  details?: any;
+}> {
+  const credentials = parseApiKey(apiKey);
+
+  try {
+    const response = await axios.get(
+      `${DATAFORSEO_API_BASE}/keywords_data/google_ads/status`,
+      {
+        auth: {
+          username: credentials.login,
+          password: credentials.password,
+        },
+      }
+    );
+
+    checkDataForSEOResponse(response);
+
+    if (response.data?.tasks?.[0]?.result?.[0]) {
+      const result = response.data.tasks[0].result[0];
+      return {
+        updated: result.updated || false,
+        updateDate: result.update_date || null,
+        message: result.updated
+          ? `Google Ads data updated on ${result.update_date}`
+          : 'Waiting for monthly Google Ads data update',
+        details: result,
+      };
+    }
+
+    return {
+      updated: false,
+      updateDate: null,
+      message: 'Unable to determine Google Ads update status',
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error('Error checking Google Ads status:', axiosError.response?.data || axiosError.message);
+      return {
+        updated: false,
+        updateDate: null,
+        message: 'Error checking Google Ads status',
+      };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get available locations for SERP API
+ * This helps you get accurate location codes for rank tracking
+ */
+export async function getAvailableLocations(
+  apiKey: string,
+  searchEngine: 'google' | 'bing' | 'youtube' = 'google'
+): Promise<any[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const endpoint =
+    searchEngine === 'google'
+      ? '/serp/google/locations'
+      : searchEngine === 'bing'
+      ? '/serp/bing/locations'
+      : '/serp/youtube/locations';
+
+  try {
+    const response = await axios.get(`${DATAFORSEO_API_BASE}${endpoint}`, {
+      auth: {
+        username: credentials.login,
+        password: credentials.password,
+      },
+    });
+
+    checkDataForSEOResponse(response);
+
+    return response.data?.tasks?.[0]?.result || [];
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error(
+        `Error fetching ${searchEngine} locations:`,
+        axiosError.response?.data || axiosError.message
+      );
+      throw new Error(`Failed to fetch ${searchEngine} locations: ${axiosError.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get available languages for SERP API
+ */
+export async function getAvailableLanguages(
+  apiKey: string,
+  searchEngine: 'google' | 'bing' | 'youtube' = 'google'
+): Promise<any[]> {
+  const credentials = parseApiKey(apiKey);
+
+  const endpoint =
+    searchEngine === 'google'
+      ? '/serp/google/languages'
+      : searchEngine === 'bing'
+      ? '/serp/bing/languages'
+      : '/serp/youtube/languages';
+
+  try {
+    const response = await axios.get(`${DATAFORSEO_API_BASE}${endpoint}`, {
+      auth: {
+        username: credentials.login,
+        password: credentials.password,
+      },
+    });
+
+    checkDataForSEOResponse(response);
+
+    return response.data?.tasks?.[0]?.result || [];
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      console.error(
+        `Error fetching ${searchEngine} languages:`,
+        axiosError.response?.data || axiosError.message
+      );
+      throw new Error(`Failed to fetch ${searchEngine} languages: ${axiosError.message}`);
     }
     throw error;
   }
