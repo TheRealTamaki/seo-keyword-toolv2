@@ -1,4 +1,4 @@
-import { Pool, PoolClient, PoolConfig, QueryResult } from 'pg';
+import { Pool, PoolClient, PoolConfig, QueryResult, QueryResultRow } from 'pg';
 
 // Pool configuration
 const poolConfig: PoolConfig = {
@@ -72,7 +72,7 @@ export async function closeDatabase(): Promise<void> {
 /**
  * Execute a query with automatic error handling
  */
-export async function query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+export async function query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
   const start = Date.now();
   try {
     const result = await pool.query<T>(text, params);
@@ -132,7 +132,7 @@ export async function healthCheck(): Promise<{
   details?: any;
 }> {
   try {
-    const _result = await pool.query('SELECT 1 as health');
+    await pool.query('SELECT 1 as health');
     const poolStats = {
       totalCount: pool.totalCount,
       idleCount: pool.idleCount,
