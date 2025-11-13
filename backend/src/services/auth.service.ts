@@ -50,12 +50,26 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     throw new Error(error.message);
   }
 
-  if (!data.user || !data.session) {
-    throw new Error('Registration failed - no user or session returned');
+  if (!data.user) {
+    throw new Error('Registration failed - no user returned');
   }
 
   // Sync user to our database
   await syncUserToDatabase(data.user);
+
+  // If no session is returned, it means email confirmation is required
+  // Create a mock session for the response (user needs to verify email)
+  if (!data.session) {
+    // Return user info without session - frontend should handle this
+    return {
+      user: {
+        id: data.user.id,
+        email: data.user.email!,
+        created_at: data.user.created_at,
+      },
+      session: null as any, // Email confirmation required
+    };
+  }
 
   return {
     user: {
