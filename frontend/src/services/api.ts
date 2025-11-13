@@ -128,6 +128,17 @@ export const apiKeysService = {
     api.post('/api-keys/validate', data),
 };
 
+// Alerts endpoints
+export const alertsService = {
+  getAll: (params?: { projectId?: string }) => api.get('/alerts', { params }),
+  getById: (id: string) => api.get(`/alerts/${id}`),
+  create: (data: any) => api.post('/alerts', data),
+  update: (id: string, data: any) => api.put(`/alerts/${id}`, data),
+  delete: (id: string) => api.delete(`/alerts/${id}`),
+  getHistory: (params?: { projectId?: string; limit?: number }) =>
+    api.get('/alerts/history', { params }),
+};
+
 // Notification Preferences endpoints
 export const notificationPreferencesService = {
   get: () => api.get('/alerts/preferences/settings'),

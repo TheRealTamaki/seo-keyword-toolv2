@@ -17,10 +17,10 @@ import Keywords from './pages/Keywords';
 import KeywordResearch from './pages/KeywordResearch';
 import Rankings from './pages/Rankings';
 import Competitors from './pages/Competitors';
+import Alerts from './pages/Alerts';
 
 // Placeholder pages (to be implemented)
 const Reports: React.FC = () => <div className="p-6">Reports Page - Coming Soon</div>;
-const Alerts: React.FC = () => <div className="p-6">Alerts Page - Coming Soon</div>;
 
 const App: React.FC = () => {
   return (
