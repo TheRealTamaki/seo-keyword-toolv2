@@ -44,7 +44,7 @@ export const supabaseAdmin: SupabaseClient | null = SUPABASE_SERVICE_ROLE_KEY
 export async function initializeSupabase(): Promise<void> {
   try {
     // Test connection by checking auth settings
-    const { data, error } = await supabase.auth.getSession();
+    const { error } = await supabase.auth.getSession();
 
     if (error && error.message !== 'Auth session missing!') {
       throw error;

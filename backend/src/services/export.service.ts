@@ -326,7 +326,7 @@ export async function exportKeywordList(
     WHERE kli.list_id = $1 AND kl.user_id = $2
   `;
 
-  const values: any[] = [listId, userId];
+  const values: any[] = [listId, _userId];
   let paramCount = 3;
 
   // Apply filters
@@ -380,7 +380,7 @@ export async function exportAlertHistory(
     WHERE a.user_id = $1
   `;
 
-  const values: any[] = [userId];
+  const values: any[] = [_userId];
   let paramCount = 2;
 
   if (projectId) {

@@ -1,15 +1,26 @@
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { initializeDatabase, closeDatabase, healthCheck as dbHealthCheck } from './config/database';
 import { initializeRedis, closeRedis, healthCheck as redisHealthCheck } from './config/redis';
 import { initializeSupabase, healthCheck as supabaseHealthCheck } from './config/supabase';
 import { initializeQueues, closeQueues } from './config/queue';
 import { initializeWorkers } from './jobs/worker';
-
-// Load environment variables
-dotenv.config();
+import projectsRoutes from './api/projects.routes';
+import keywordsRoutes from './api/keywords.routes';
+import rankingsRoutes from './api/rankings.routes';
+import competitorsRoutes from './api/competitors.routes';
+import jobsRoutes from './api/jobs.routes';
+import keywordResearchRoutes from './api/keyword-research.routes';
+import keywordListsRoutes from './api/keyword-lists.routes';
+import competitorAnalysisRoutes from './api/competitor-analysis.routes';
+import alertsRoutes from './api/alerts.routes';
+import exportsRoutes from './api/exports.routes';
+import reportsRoutes from './api/reports.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,18 +75,18 @@ app.get('/health/detailed', async (_req, res) => {
 // API routes
 app.use('/api/auth', require('./api/auth.routes'));
 app.use('/api/dashboard', require('./api/dashboard.routes'));
-app.use('/api/projects', require('./api/projects.routes'));
-app.use('/api/keywords', require('./api/keywords.routes'));
-app.use('/api/rankings', require('./api/rankings.routes'));
-app.use('/api/competitors', require('./api/competitors.routes'));
+app.use('/api/projects', projectsRoutes);
+app.use('/api/keywords', keywordsRoutes);
+app.use('/api/rankings', rankingsRoutes);
+app.use('/api/competitors', competitorsRoutes);
 app.use('/api/api-keys', require('./api/api-keys.routes'));
-app.use('/api/jobs', require('./api/jobs.routes'));
-app.use('/api/keyword-research', require('./api/keyword-research.routes'));
-app.use('/api/keyword-lists', require('./api/keyword-lists.routes'));
-app.use('/api/competitor-analysis', require('./api/competitor-analysis.routes'));
-app.use('/api/alerts', require('./api/alerts.routes'));
-app.use('/api/exports', require('./api/exports.routes'));
-app.use('/api/reports', require('./api/reports.routes'));
+app.use('/api/jobs', jobsRoutes);
+app.use('/api/keyword-research', keywordResearchRoutes);
+app.use('/api/keyword-lists', keywordListsRoutes);
+app.use('/api/competitor-analysis', competitorAnalysisRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/exports', exportsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // 404 handler
 app.use((_req, res) => {

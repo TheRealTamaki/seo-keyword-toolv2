@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { pool } from '../config/database';
 
 const router = Router();
 
 // Get dashboard stats
-router.get('/stats', authenticateToken, async (req: Request, res: Response) => {
+router.get('/stats', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
 
     // Get total projects
     const projectsResult = await pool.query(
@@ -93,9 +93,9 @@ router.get('/stats', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Get recent ranking changes (last 24 hours)
-router.get('/recent-changes', authenticateToken, async (req: Request, res: Response) => {
+router.get('/recent-changes', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const limit = parseInt(req.query.limit as string) || 10;
 
     const result = await pool.query(
@@ -144,9 +144,9 @@ router.get('/recent-changes', authenticateToken, async (req: Request, res: Respo
 });
 
 // Get project overview stats
-router.get('/projects-overview', authenticateToken, async (req: Request, res: Response) => {
+router.get('/projects-overview', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const limit = parseInt(req.query.limit as string) || 5;
 
     // Get projects with stats
@@ -204,9 +204,9 @@ router.get('/projects-overview', authenticateToken, async (req: Request, res: Re
 });
 
 // Get top ranking keywords
-router.get('/top-keywords', authenticateToken, async (req: Request, res: Response) => {
+router.get('/top-keywords', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const limit = parseInt(req.query.limit as string) || 10;
 
     const result = await pool.query(
@@ -263,9 +263,9 @@ router.get('/top-keywords', authenticateToken, async (req: Request, res: Respons
 });
 
 // Get worst ranking keywords (opportunities to improve)
-router.get('/worst-keywords', authenticateToken, async (req: Request, res: Response) => {
+router.get('/worst-keywords', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.userId!;
     const limit = parseInt(req.query.limit as string) || 10;
 
     const result = await pool.query(

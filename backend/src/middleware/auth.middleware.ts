@@ -13,6 +13,7 @@ declare global {
       };
       userId?: string;
       token?: string;
+      apiKey?: any;
     }
   }
 }
@@ -52,7 +53,7 @@ export async function authenticate(
     }
 
     // Sync user to our database if not exists
-    let dbUser = await UserModel.findUserById(supabaseUser.id);
+    let dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);
     if (!dbUser && supabaseUser.email) {
       await UserModel.createUserFromSupabase(supabaseUser.id, supabaseUser.email);
       dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);
@@ -90,7 +91,7 @@ export async function authenticate(
  */
 export async function optionalAuthenticate(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
@@ -109,7 +110,7 @@ export async function optionalAuthenticate(
       const supabaseUser = await verifyToken(token);
 
       // Sync user to our database if not exists
-      let dbUser = await UserModel.findUserById(supabaseUser.id);
+      let dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);
       if (!dbUser && supabaseUser.email) {
         await UserModel.createUserFromSupabase(supabaseUser.id, supabaseUser.email);
         dbUser = await UserModel.findUserByIdSafe(supabaseUser.id);

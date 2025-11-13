@@ -1,5 +1,4 @@
-import { query, transaction } from '../config/database';
-import { PoolClient } from 'pg';
+import { query } from '../config/database';
 
 export interface User {
   id: string;
