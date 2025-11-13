@@ -194,4 +194,31 @@ export const keywordListsService = {
   export: (id: string) => api.get(`/keyword-lists/${id}/export`),
 };
 
+// Reports endpoints
+export const reportsService = {
+  // Templates
+  getTemplates: (params?: { projectId?: string }) =>
+    api.get('/reports/templates', { params }),
+  getTemplateById: (id: string) => api.get(`/reports/templates/${id}`),
+  createTemplate: (data: any) => api.post('/reports/templates', data),
+  updateTemplate: (id: string, data: any) => api.put(`/reports/templates/${id}`, data),
+  deleteTemplate: (id: string) => api.delete(`/reports/templates/${id}`),
+
+  // Schedules
+  getSchedules: (params?: { projectId?: string }) =>
+    api.get('/reports/schedules', { params }),
+  getScheduleById: (id: string) => api.get(`/reports/schedules/${id}`),
+  createSchedule: (data: any) => api.post('/reports/schedules', data),
+  updateSchedule: (id: string, data: any) => api.put(`/reports/schedules/${id}`, data),
+  deleteSchedule: (id: string) => api.delete(`/reports/schedules/${id}`),
+
+  // History & Generation
+  getHistory: (params?: { projectId?: string; limit?: number }) =>
+    api.get('/reports/history', { params }),
+  generateReport: (templateId: string) =>
+    api.post(`/reports/generate/${templateId}`),
+  downloadReport: (historyId: string) =>
+    api.get(`/reports/download/${historyId}`, { responseType: 'blob' }),
+};
+
 export default api;
