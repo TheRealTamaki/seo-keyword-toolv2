@@ -5,10 +5,12 @@ import DashboardLayout from '../components/Layout/DashboardLayout';
 import ApiKeyManagement from '../components/Settings/ApiKeyManagement';
 import NotificationPreferences from '../components/Settings/NotificationPreferences';
 import UserProfile from '../components/Settings/UserProfile';
+import WhiteLabelBranding from '../components/Settings/WhiteLabelBranding';
 import {
   KeyIcon,
   BellIcon,
   UserCircleIcon,
+  BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 
 const Settings: React.FC = () => {
@@ -24,6 +26,12 @@ const Settings: React.FC = () => {
       icon: BellIcon,
       component: NotificationPreferences,
       description: 'Configure alert and notification preferences',
+    },
+    {
+      name: 'Branding',
+      icon: BuildingOfficeIcon,
+      component: WhiteLabelBranding,
+      description: 'Customize white-label branding for reports',
     },
     {
       name: 'Profile',

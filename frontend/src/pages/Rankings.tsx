@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/Layout/DashboardLayout';
 import { projectsService, keywordsService, rankingsService } from '../services/api';
 import RankingChart from '../components/Rankings/RankingChart';
+import RankDistributionChart from '../components/Rankings/RankDistributionChart';
 import SerpFeatures from '../components/Rankings/SerpFeatures';
 import CompetitorComparison from '../components/Rankings/CompetitorComparison';
 import {
@@ -423,9 +424,16 @@ const Rankings: React.FC = () => {
               </div>
             </div>
 
-            {/* Ranking History Chart */}
+            {/* Ranking History Chart & Distribution */}
             {historyData.length > 0 ? (
-              <RankingChart data={historyData} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <RankingChart data={historyData} />
+                </div>
+                <div>
+                  <RankDistributionChart data={historyData} />
+                </div>
+              </div>
             ) : (
               <div className="bg-white rounded-lg shadow p-12 text-center">
                 <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />

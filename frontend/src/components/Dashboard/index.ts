@@ -3,3 +3,5 @@ export { default as RecentChanges } from './RecentChanges';
 export { default as ProjectOverview } from './ProjectOverview';
 export { default as QuickActions } from './QuickActions';
 export { default as TopKeywords } from './TopKeywords';
+export { default as QuickInsights } from './QuickInsights';
+export { default as RankingTrends } from './RankingTrends';
