@@ -1,28 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { projectsService } from '../services/api';
+import { projectsService, keywordsService, competitorsService } from '../services/api';
 import { PlusIcon, FolderIcon } from '@heroicons/react/24/outline';
 import DashboardLayout from '../components/Layout/DashboardLayout';
+import ProjectCard from '../components/Projects/ProjectCard';
+import CreateProjectModal from '../components/Projects/CreateProjectModal';
+import EditProjectModal from '../components/Projects/EditProjectModal';
+import DeleteProjectDialog from '../components/Projects/DeleteProjectDialog';
 import toast from 'react-hot-toast';
+import { Project } from '../types';
 
-interface Project {
-  id: string;
-  name: string;
-  domain: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
+interface ProjectWithStats extends Project {
+  stats?: {
+    totalKeywords: number;
+    trackedKeywords: number;
+    avgRank?: number;
+    totalCompetitors: number;
+  };
 }
 
 const Projects: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    name: '',
-    domain: '',
-    description: '',
-  });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -32,7 +37,13 @@ const Projects: React.FC = () => {
     try {
       const response = await projectsService.getAll();
       if (response.data.success) {
-        setProjects(response.data.data || []);
+        const projectsData = response.data.data || [];
+        setProjects(projectsData);
+
+        // Fetch stats for each project
+        if (projectsData.length > 0) {
+          fetchProjectsStats(projectsData);
+        }
       }
     } catch (error) {
       toast.error('Failed to load projects');
@@ -42,21 +53,116 @@ const Projects: React.FC = () => {
     }
   };
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const fetchProjectsStats = async (projectsList: Project[]) => {
+    setLoadingStats(true);
     try {
-      const response = await projectsService.create(newProject);
+      const projectsWithStats = await Promise.all(
+        projectsList.map(async (project) => {
+          try {
+            // Fetch keywords for this project
+            const keywordsResponse = await keywordsService.getByProject(project.id);
+            const keywords = keywordsResponse.data.data || [];
+
+            // Fetch competitors for this project
+            const competitorsResponse = await competitorsService.getByProject(project.id);
+            const competitors = competitorsResponse.data.data || [];
+
+            // Fetch keywords with rankings to calculate average
+            const rankedKeywordsResponse = await keywordsService.getWithRankings(project.id);
+            const rankedKeywords = rankedKeywordsResponse.data.data || [];
+
+            // Calculate average rank
+            let avgRank = undefined;
+            if (rankedKeywords.length > 0) {
+              const ranks = rankedKeywords
+                .map((kw: any) => kw.currentRank)
+                .filter((rank: number) => rank > 0);
+              if (ranks.length > 0) {
+                avgRank = ranks.reduce((a: number, b: number) => a + b, 0) / ranks.length;
+              }
+            }
+
+            return {
+              ...project,
+              stats: {
+                totalKeywords: keywords.length,
+                trackedKeywords: rankedKeywords.length,
+                avgRank,
+                totalCompetitors: competitors.length,
+              },
+            };
+          } catch (error) {
+            console.error(`Error fetching stats for project ${project.id}:`, error);
+            return project;
+          }
+        })
+      );
+
+      setProjects(projectsWithStats);
+    } catch (error) {
+      console.error('Error fetching project stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const handleCreateProject = async (data: {
+    name: string;
+    domain: string;
+    description?: string;
+  }) => {
+    try {
+      const response = await projectsService.create(data);
       if (response.data.success) {
         toast.success('Project created successfully!');
         setShowCreateModal(false);
-        setNewProject({ name: '', domain: '', description: '' });
         fetchProjects();
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to create project');
-      console.error('Error creating project:', error);
+      throw error;
     }
+  };
+
+  const handleEditProject = async (
+    id: string,
+    data: { name: string; domain: string; description?: string }
+  ) => {
+    try {
+      const response = await projectsService.update(id, data);
+      if (response.data.success) {
+        toast.success('Project updated successfully!');
+        setShowEditModal(false);
+        setSelectedProject(null);
+        fetchProjects();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to update project');
+      throw error;
+    }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await projectsService.delete(id);
+      toast.success('Project deleted successfully');
+      setShowDeleteDialog(false);
+      setSelectedProject(null);
+      fetchProjects();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to delete project');
+      throw error;
+    }
+  };
+
+  const handleOpenEdit = (project: Project) => {
+    setSelectedProject(project);
+    setShowEditModal(true);
+  };
+
+  const handleOpenDelete = (project: Project) => {
+    setSelectedProject(project);
+    setShowDeleteDialog(true);
   };
 
   if (loading) {
@@ -72,16 +178,17 @@ const Projects: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage your SEO projects and track keywords
+              Manage your SEO projects and track keywords across domains
             </p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
             New Project
@@ -94,124 +201,66 @@ const Projects: React.FC = () => {
             <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">No projects yet</h3>
             <p className="mt-2 text-sm text-gray-500">
-              Get started by creating your first SEO project
+              Get started by creating your first SEO project to track keywords and rankings
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="mt-6 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
-              Create Project
+              Create Your First Project
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <Link
-                key={project.id}
-                to={`/projects/${project.id}`}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center">
-                    <div className="bg-primary-100 p-2 rounded-lg">
-                      <FolderIcon className="h-6 w-6 text-primary-600" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
-                      <p className="text-sm text-gray-500">{project.domain}</p>
-                    </div>
-                  </div>
-                </div>
-                {project.description && (
-                  <p className="mt-4 text-sm text-gray-600 line-clamp-2">{project.description}</p>
-                )}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    Created {new Date(project.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  stats={project.stats}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleOpenDelete}
+                />
+              ))}
+            </div>
+
+            {loadingStats && (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-500">Loading project statistics...</p>
+              </div>
+            )}
+          </>
         )}
 
         {/* Create Project Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4">
-              <div
-                className="fixed inset-0 bg-gray-600 bg-opacity-75"
-                onClick={() => setShowCreateModal(false)}
-              ></div>
+        <CreateProjectModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateProject}
+        />
 
-              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Project</h3>
+        {/* Edit Project Modal */}
+        <EditProjectModal
+          isOpen={showEditModal}
+          project={selectedProject}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedProject(null);
+          }}
+          onSubmit={handleEditProject}
+        />
 
-                <form onSubmit={handleCreateProject} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Project Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newProject.name}
-                      onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="My Website"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Domain
-                    </label>
-                    <input
-                      type="text"
-                      value={newProject.domain}
-                      onChange={(e) => setNewProject({ ...newProject, domain: e.target.value })}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description (Optional)
-                    </label>
-                    <textarea
-                      value={newProject.description}
-                      onChange={(e) =>
-                        setNewProject({ ...newProject, description: e.target.value })
-                      }
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Project description..."
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateModal(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                      Create Project
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Delete Project Dialog */}
+        <DeleteProjectDialog
+          isOpen={showDeleteDialog}
+          project={selectedProject}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setSelectedProject(null);
+          }}
+          onConfirm={handleDeleteProject}
+        />
       </div>
     </DashboardLayout>
   );

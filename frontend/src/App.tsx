@@ -11,6 +11,7 @@ import Register from './pages/Register';
 // Dashboard Pages
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import ProjectSettings from './pages/ProjectSettings';
 import Settings from './pages/Settings';
 import Keywords from './pages/Keywords';
 import KeywordResearch from './pages/KeywordResearch';
@@ -69,6 +70,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:projectId/settings"
+            element={
+              <ProtectedRoute>
+                <ProjectSettings />
               </ProtectedRoute>
             }
           />

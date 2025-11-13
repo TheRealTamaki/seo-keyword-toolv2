@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import ProjectSwitcher from '../Projects/ProjectSwitcher';
 import {
   HomeIcon,
   FolderIcon,
@@ -59,6 +60,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </button>
           </div>
 
+          {/* Project Switcher */}
+          <ProjectSwitcher />
+
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
@@ -104,6 +108,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className="flex items-center h-16 px-4 border-b border-gray-200">
             <span className="text-xl font-bold text-primary-600">SEO Keyword Tool</span>
           </div>
+
+          {/* Project Switcher */}
+          <ProjectSwitcher />
 
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
