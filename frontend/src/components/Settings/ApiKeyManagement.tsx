@@ -7,9 +7,9 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   TrashIcon,
-  EyeIcon,
-  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
+import AddApiKeyModal from './AddApiKeyModal';
+import DeleteApiKeyDialog from './DeleteApiKeyDialog';
 
 interface ApiKey {
   id: string;
@@ -25,15 +25,8 @@ interface ApiKey {
 const ApiKeyManagement: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  // Form state
-  const [provider, setProvider] = useState('dataforseo');
-  const [apiKey, setApiKey] = useState('');
-  const [apiPassword, setApiPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchApiKeys();
@@ -87,65 +80,28 @@ const ApiKeyManagement: React.FC = () => {
     }
   };
 
-  const handleValidate = async () => {
-    if (!apiKey.trim() || !apiPassword.trim()) {
-      toast.error('Please enter both API login and password');
-      return;
-    }
-
+  const handleAddApiKey = async (apiKey: string, apiPassword: string) => {
     try {
-      setValidating(true);
-      // First save without validation to test
       await apiKeysService.create({
-        apiKey: `${apiKey.trim()}:${apiPassword.trim()}`,
+        apiKey: `${apiKey}:${apiPassword}`,
         skipValidation: false,
       });
-
-      toast.success('API key is valid!');
-      fetchApiKeys();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || error.response?.data?.error || 'API key validation failed');
-    } finally {
-      setValidating(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!apiKey.trim() || !apiPassword.trim()) {
-      toast.error('Please enter both API login and password');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await apiKeysService.create({
-        apiKey: `${apiKey.trim()}:${apiPassword.trim()}`,
-        skipValidation: false,
-      });
-
       toast.success('API key saved successfully!');
-      setShowAddForm(false);
-      setApiKey('');
-      setApiPassword('');
       fetchApiKeys();
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to save API key');
-    } finally {
-      setSaving(false);
+      throw error;
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this API key?')) {
-      return;
-    }
-
+  const handleDeleteApiKey = async () => {
     try {
       await apiKeysService.delete();
       toast.success('API key deleted successfully');
       fetchApiKeys();
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to delete API key');
+      throw error;
     }
   };
 
@@ -224,7 +180,7 @@ const ApiKeyManagement: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setIsDeleteDialogOpen(true)}
                   className="ml-4 text-red-600 hover:text-red-800 transition-colors"
                 >
                   <TrashIcon className="h-5 w-5" />
@@ -236,14 +192,14 @@ const ApiKeyManagement: React.FC = () => {
       )}
 
       {/* Add New API Key */}
-      {!showAddForm && apiKeys.length === 0 && (
+      {apiKeys.length === 0 && (
         <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
           <KeyIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No API keys</h3>
           <p className="mt-1 text-sm text-gray-500">Get started by adding your DataForSEO API key</p>
           <div className="mt-6">
             <button
-              onClick={() => setShowAddForm(true)}
+              onClick={() => setIsAddModalOpen(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               <KeyIcon className="-ml-1 mr-2 h-5 w-5" />
@@ -253,9 +209,9 @@ const ApiKeyManagement: React.FC = () => {
         </div>
       )}
 
-      {!showAddForm && apiKeys.length > 0 && (
+      {apiKeys.length > 0 && (
         <button
-          onClick={() => setShowAddForm(true)}
+          onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           <KeyIcon className="-ml-1 mr-2 h-5 w-5" />
@@ -263,110 +219,18 @@ const ApiKeyManagement: React.FC = () => {
         </button>
       )}
 
-      {/* Add API Key Form */}
-      {showAddForm && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">Add New API Key</h3>
+      {/* Modals */}
+      <AddApiKeyModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddApiKey}
+      />
 
-          <div>
-            <label htmlFor="provider" className="block text-sm font-medium text-gray-700">
-              Provider
-            </label>
-            <select
-              id="provider"
-              value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            >
-              <option value="dataforseo">DataForSEO</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
-              API Login (Username)
-            </label>
-            <input
-              type="text"
-              id="apiKey"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="your-login@email.com"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="apiPassword" className="block text-sm font-medium text-gray-700">
-              API Password
-            </label>
-            <div className="mt-1 relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="apiPassword"
-                value={apiPassword}
-                onChange={(e) => setApiPassword(e.target.value)}
-                placeholder="your-api-password"
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 pt-4">
-            <button
-              onClick={handleValidate}
-              disabled={validating || !apiKey.trim()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {validating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
-                  Validating...
-                </>
-              ) : (
-                'Test Connection'
-              )}
-            </button>
-
-            <button
-              onClick={handleSave}
-              disabled={saving || !apiKey.trim()}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Saving...
-                </>
-              ) : (
-                'Save API Key'
-              )}
-            </button>
-
-            <button
-              onClick={() => {
-                setShowAddForm(false);
-                setApiKey('');
-                setApiPassword('');
-              }}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <DeleteApiKeyDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteApiKey}
+      />
     </div>
   );
 };
