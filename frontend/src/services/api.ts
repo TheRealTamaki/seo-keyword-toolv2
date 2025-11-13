@@ -39,6 +39,19 @@ export const authService = {
   logout: () => api.post('/auth/logout'),
 };
 
+// Dashboard endpoints
+export const dashboardService = {
+  getStats: () => api.get('/dashboard/stats'),
+  getRecentChanges: (params?: { limit?: number }) =>
+    api.get('/dashboard/recent-changes', { params }),
+  getProjectsOverview: (params?: { limit?: number }) =>
+    api.get('/dashboard/projects-overview', { params }),
+  getTopKeywords: (params?: { limit?: number }) =>
+    api.get('/dashboard/top-keywords', { params }),
+  getWorstKeywords: (params?: { limit?: number }) =>
+    api.get('/dashboard/worst-keywords', { params }),
+};
+
 // Projects endpoints
 export const projectsService = {
   getAll: () => api.get('/projects'),

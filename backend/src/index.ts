@@ -63,6 +63,7 @@ app.get('/health/detailed', async (req, res) => {
 
 // API routes
 app.use('/api/auth', require('./api/auth.routes'));
+app.use('/api/dashboard', require('./api/dashboard.routes'));
 app.use('/api/projects', require('./api/projects.routes'));
 app.use('/api/keywords', require('./api/keywords.routes'));
 app.use('/api/rankings', require('./api/rankings.routes'));
