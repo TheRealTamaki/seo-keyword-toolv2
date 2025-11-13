@@ -4,7 +4,7 @@
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "timescaledb";
+-- CREATE EXTENSION IF NOT EXISTS "timescaledb"; -- Commented out for regular PostgreSQL
 
 -- ============================================
 -- Users Table
@@ -91,14 +91,14 @@ CREATE TABLE IF NOT EXISTS rankings (
   PRIMARY KEY (keyword_id, search_engine, device, location, checked_at)
 );
 
--- Convert to hypertable for time-series optimization
-SELECT create_hypertable('rankings', 'checked_at', if_not_exists => TRUE);
+-- Convert to hypertable for time-series optimization (TimescaleDB only)
+-- SELECT create_hypertable('rankings', 'checked_at', if_not_exists => TRUE);
 
--- Add compression for time-series data
-ALTER TABLE rankings SET (
-  timescaledb.compress,
-  timescaledb.compress_orderby = 'checked_at DESC'
-);
+-- Add compression for time-series data (TimescaleDB only)
+-- ALTER TABLE rankings SET (
+--   timescaledb.compress,
+--   timescaledb.compress_orderby = 'checked_at DESC'
+-- );
 
 CREATE INDEX idx_rankings_keyword_id ON rankings(keyword_id);
 CREATE INDEX idx_rankings_domain ON rankings(domain);
