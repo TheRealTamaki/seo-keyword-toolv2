@@ -16,7 +16,7 @@ const poolConfig: PoolConfig = {
 export const pool = new Pool(poolConfig);
 
 // Error handling for idle clients
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('❌ Unexpected error on idle PostgreSQL client:', err);
   process.exit(-1);
 });
@@ -132,7 +132,7 @@ export async function healthCheck(): Promise<{
   details?: any;
 }> {
   try {
-    const result = await pool.query('SELECT 1 as health');
+    const _result = await pool.query('SELECT 1 as health');
     const poolStats = {
       totalCount: pool.totalCount,
       idleCount: pool.idleCount,
