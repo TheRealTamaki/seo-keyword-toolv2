@@ -121,11 +121,11 @@ export const competitorAnalysisService = {
 // API Keys endpoints
 export const apiKeysService = {
   get: () => api.get('/api-keys'),
-  create: (data: { provider: string; apiKey: string; apiPassword?: string }) =>
+  getAccountInfo: () => api.get('/api-keys/account-info'),
+  create: (data: { apiKey: string; skipValidation?: boolean }) =>
     api.post('/api-keys', data),
-  delete: (id: string) => api.delete(`/api-keys/${id}`),
-  validate: (data: { provider: string; apiKey: string; apiPassword?: string }) =>
-    api.post('/api-keys/validate', data),
+  delete: () => api.delete('/api-keys'),
+  validate: () => api.post('/api-keys/validate'),
 };
 
 // Alerts endpoints

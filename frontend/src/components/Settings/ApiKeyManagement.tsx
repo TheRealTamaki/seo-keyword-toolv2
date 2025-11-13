@@ -43,7 +43,40 @@ const ApiKeyManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiKeysService.get();
-      setApiKeys(response.data.data || []);
+      // Backend returns single API key info, not an array
+      const keyData = response.data.data;
+      if (keyData) {
+        setApiKeys([{
+          id: keyData.id,
+          provider: keyData.provider,
+          isValid: keyData.isValidated,
+          createdAt: keyData.createdAt,
+        }]);
+
+        // Try to fetch account info if key is validated
+        if (keyData.isValidated) {
+          try {
+            const accountResponse = await apiKeysService.getAccountInfo();
+            if (accountResponse.data.success && accountResponse.data.data) {
+              setApiKeys([{
+                id: keyData.id,
+                provider: keyData.provider,
+                isValid: keyData.isValidated,
+                accountInfo: {
+                  balance: accountResponse.data.data.balance || 0,
+                  tasksCompleted: 0,
+                },
+                createdAt: keyData.createdAt,
+              }]);
+            }
+          } catch (err) {
+            // Ignore account info errors
+            console.log('Could not fetch account info:', err);
+          }
+        }
+      } else {
+        setApiKeys([]);
+      }
     } catch (error: any) {
       if (error.response?.status !== 404) {
         toast.error('Failed to load API keys');
@@ -55,72 +88,64 @@ const ApiKeyManagement: React.FC = () => {
   };
 
   const handleValidate = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter an API key');
+    if (!apiKey.trim() || !apiPassword.trim()) {
+      toast.error('Please enter both API login and password');
       return;
     }
 
     try {
       setValidating(true);
-      const response = await apiKeysService.validate({
-        provider,
-        apiKey: apiKey.trim(),
-        apiPassword: apiPassword.trim() || undefined,
+      // First save without validation to test
+      await apiKeysService.create({
+        apiKey: `${apiKey.trim()}:${apiPassword.trim()}`,
+        skipValidation: false,
       });
 
-      if (response.data.success) {
-        toast.success('API key is valid!');
-        const accountInfo = response.data.data;
-        if (accountInfo.balance !== undefined) {
-          toast.success(`Account balance: $${accountInfo.balance.toFixed(2)}`);
-        }
-      }
+      toast.success('API key is valid!');
+      fetchApiKeys();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'API key validation failed');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'API key validation failed');
     } finally {
       setValidating(false);
     }
   };
 
   const handleSave = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter an API key');
+    if (!apiKey.trim() || !apiPassword.trim()) {
+      toast.error('Please enter both API login and password');
       return;
     }
 
     try {
       setSaving(true);
-      const response = await apiKeysService.create({
-        provider,
-        apiKey: apiKey.trim(),
-        apiPassword: apiPassword.trim() || undefined,
+      await apiKeysService.create({
+        apiKey: `${apiKey.trim()}:${apiPassword.trim()}`,
+        skipValidation: false,
       });
 
-      if (response.data.success) {
-        toast.success('API key saved successfully!');
-        setShowAddForm(false);
-        setApiKey('');
-        setApiPassword('');
-        fetchApiKeys();
-      }
+      toast.success('API key saved successfully!');
+      setShowAddForm(false);
+      setApiKey('');
+      setApiPassword('');
+      fetchApiKeys();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save API key');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to save API key');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this API key?')) {
       return;
     }
 
     try {
-      await apiKeysService.delete(id);
+      await apiKeysService.delete();
       toast.success('API key deleted successfully');
       fetchApiKeys();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete API key');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to delete API key');
     }
   };
 
@@ -199,7 +224,7 @@ const ApiKeyManagement: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDelete(key.id)}
+                  onClick={handleDelete}
                   className="ml-4 text-red-600 hover:text-red-800 transition-colors"
                 >
                   <TrashIcon className="h-5 w-5" />
