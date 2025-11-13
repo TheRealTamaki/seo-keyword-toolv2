@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts';
 import { TrophyIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { competitorAnalysisService } from '../../services/api';
+import BarChart from '../Charts/BarChart';
+import PieChart from '../Charts/PieChart';
+import PositionTierComparison from './PositionTierComparison';
 
 interface Competitor {
   _id: string;
@@ -65,45 +58,31 @@ const VisibilityComparison: React.FC<VisibilityComparisonProps> = ({
     domain: item.domain.length > 20 ? item.domain.substring(0, 20) + '...' : item.domain,
     fullDomain: item.domain,
     score: Math.round(item.visibilityScore),
+    isYours: item.domain === projectDomain,
   }));
 
   // Find project data
   const projectData = data.find((d) => d.domain === projectDomain);
   const competitorData = data.filter((d) => d.domain !== projectDomain);
 
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const domainData = data.find((d) => d.domain === payload[0].payload.fullDomain);
-      if (!domainData) return null;
+  // Prepare market share data (based on total keywords)
+  const marketShareData = data.map((item) => ({
+    name: item.domain.length > 25 ? item.domain.substring(0, 25) + '...' : item.domain,
+    value: item.totalKeywords,
+  }));
 
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900">{domainData.domain}</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Visibility Score: {Math.round(domainData.visibilityScore)}
-          </p>
-          <p className="text-xs text-gray-500">
-            Keywords: {domainData.totalKeywords}
-          </p>
-          <p className="text-xs text-gray-500">
-            Avg Position: {domainData.avgPosition.toFixed(1)}
-          </p>
-          <p className="text-xs text-gray-500">
-            Est. Traffic: {domainData.estimatedTraffic.toLocaleString()}
-          </p>
-        </div>
-      );
-    }
-    return null;
+  // Color function for bar chart
+  const colorScale = (value: number) => {
+    // Find the item to determine if it's the project domain
+    const item = chartData.find(d => d.score === value);
+    return item?.isYours ? '#6366f1' : '#9ca3af'; // primary or gray
   };
 
-  // Get bar color
-  const getBarColor = (domain: string) => {
-    return domain === projectDomain || chartData.find(d => d.fullDomain === projectDomain)?.domain === domain
-      ? '#4f46e5'
-      : '#9ca3af';
+  const tooltipFormatter = (value: any, name: string): [string, string] => {
+    return [`Score: ${value}`, name];
   };
+
+  const marketShareFormatter = (value: number) => `${value} keywords`;
 
   return (
     <div className="p-6">
@@ -141,56 +120,49 @@ const VisibilityComparison: React.FC<VisibilityComparisonProps> = ({
         </div>
       ) : (
         <>
-          {/* Chart */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">
-              Visibility Score Comparison
-            </h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="domain"
-                    stroke="#6b7280"
-                    style={{ fontSize: '12px' }}
-                    tick={{ fill: '#6b7280' }}
-                    angle={-45}
-                    textAnchor="end"
-                  />
-                  <YAxis
-                    stroke="#6b7280"
-                    style={{ fontSize: '12px' }}
-                    tick={{ fill: '#6b7280' }}
-                    label={{
-                      value: 'Visibility Score',
-                      angle: -90,
-                      position: 'insideLeft',
-                      style: { fontSize: '12px', fill: '#6b7280' },
-                    }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getBarColor(entry.fullDomain)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Visibility Score Bar Chart - 2 columns */}
+            <div className="lg:col-span-2">
+              <BarChart
+                data={chartData}
+                series={[
+                  {
+                    dataKey: 'score',
+                    name: 'Visibility Score',
+                  },
+                ]}
+                xAxisKey="domain"
+                title="Visibility Score Comparison"
+                subtitle="Compare visibility scores across all domains"
+                height={350}
+                showGrid={true}
+                showLegend={false}
+                colorByValue={true}
+                colorScale={colorScale}
+                tooltipFormatter={tooltipFormatter}
+                yAxisLabel="Score"
+              />
             </div>
-            <div className="flex items-center justify-center space-x-6 mt-4 text-xs text-gray-500">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-primary-600 rounded mr-2"></div>
-                <span>Your Domain</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-gray-400 rounded mr-2"></div>
-                <span>Competitors</span>
-              </div>
+
+            {/* Market Share Pie Chart - 1 column */}
+            <div>
+              <PieChart
+                data={marketShareData}
+                title="Market Share"
+                subtitle="Distribution by keyword count"
+                height={350}
+                showLegend={true}
+                showLabels={false}
+                showPercentage={true}
+                valueFormatter={marketShareFormatter}
+              />
             </div>
+          </div>
+
+          {/* Position Tier Comparison */}
+          <div className="mb-6">
+            <PositionTierComparison data={data} projectDomain={projectDomain} />
           </div>
 
           {/* Detailed Stats */}

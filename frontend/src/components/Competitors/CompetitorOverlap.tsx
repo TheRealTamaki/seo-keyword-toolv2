@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import {
   ChartPieIcon,
   ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { competitorAnalysisService } from '../../services/api';
+import PieChart from '../Charts/PieChart';
 
 interface Competitor {
   _id: string;
@@ -40,8 +33,6 @@ interface CompetitorOverlapProps {
   competitors: Competitor[];
 }
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b'];
-
 const CompetitorOverlap: React.FC<CompetitorOverlapProps> = ({
   projectId,
   competitors,
@@ -68,20 +59,7 @@ const CompetitorOverlap: React.FC<CompetitorOverlapProps> = ({
     }
   };
 
-  // Custom tooltip for pie chart
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900">{payload[0].name}</p>
-          <p className="text-xs text-gray-500 mt-1">
-            {payload[0].value.toLocaleString()} keywords
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const valueFormatter = (value: number) => `${value.toLocaleString()} keywords`;
 
   return (
     <div className="p-6">
@@ -125,7 +103,10 @@ const CompetitorOverlap: React.FC<CompetitorOverlapProps> = ({
               { name: 'Shared Keywords', value: competitor.sharedKeywords },
               { name: 'Unique to You', value: competitor.uniqueToYou },
               { name: 'Unique to Competitor', value: competitor.uniqueToCompetitor },
-            ];
+            ].filter((item) => item.value > 0); // Only show non-zero values
+
+            // Custom colors for the pie chart
+            const colors = ['#6366f1', '#10b981', '#f59e0b']; // primary, green, amber
 
             return (
               <div
@@ -179,35 +160,18 @@ const CompetitorOverlap: React.FC<CompetitorOverlapProps> = ({
                     </div>
                   </div>
 
-                  {/* Pie Chart */}
+                  {/* Pie Chart using new wrapper */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">
-                      Keyword Distribution
-                    </h4>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) =>
-                              `${name}: ${(percent * 100).toFixed(0)}%`
-                            }
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, i) => (
-                              <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
+                    <PieChart
+                      data={pieData}
+                      title="Keyword Distribution"
+                      height={280}
+                      showLegend={true}
+                      showLabels={false}
+                      showPercentage={true}
+                      colors={colors}
+                      valueFormatter={valueFormatter}
+                    />
                   </div>
 
                   {/* Shared Keywords Toggle */}
