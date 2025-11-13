@@ -39,6 +39,19 @@ export const authService = {
   logout: () => api.post('/auth/logout'),
 };
 
+// Dashboard endpoints
+export const dashboardService = {
+  getStats: () => api.get('/dashboard/stats'),
+  getRecentChanges: (params?: { limit?: number }) =>
+    api.get('/dashboard/recent-changes', { params }),
+  getProjectsOverview: (params?: { limit?: number }) =>
+    api.get('/dashboard/projects-overview', { params }),
+  getTopKeywords: (params?: { limit?: number }) =>
+    api.get('/dashboard/top-keywords', { params }),
+  getWorstKeywords: (params?: { limit?: number }) =>
+    api.get('/dashboard/worst-keywords', { params }),
+};
+
 // Projects endpoints
 export const projectsService = {
   getAll: () => api.get('/projects'),
@@ -115,6 +128,17 @@ export const apiKeysService = {
     api.post('/api-keys/validate', data),
 };
 
+// Alerts endpoints
+export const alertsService = {
+  getAll: (params?: { projectId?: string }) => api.get('/alerts', { params }),
+  getById: (id: string) => api.get(`/alerts/${id}`),
+  create: (data: any) => api.post('/alerts', data),
+  update: (id: string, data: any) => api.put(`/alerts/${id}`, data),
+  delete: (id: string) => api.delete(`/alerts/${id}`),
+  getHistory: (params?: { projectId?: string; limit?: number }) =>
+    api.get('/alerts/history', { params }),
+};
+
 // Notification Preferences endpoints
 export const notificationPreferencesService = {
   get: () => api.get('/alerts/preferences/settings'),
@@ -168,6 +192,33 @@ export const keywordListsService = {
   bulkDeleteKeywords: (listId: string, data: { itemIds: string[] }) =>
     api.post(`/keyword-lists/${listId}/keywords/bulk-delete`, data),
   export: (id: string) => api.get(`/keyword-lists/${id}/export`),
+};
+
+// Reports endpoints
+export const reportsService = {
+  // Templates
+  getTemplates: (params?: { projectId?: string }) =>
+    api.get('/reports/templates', { params }),
+  getTemplateById: (id: string) => api.get(`/reports/templates/${id}`),
+  createTemplate: (data: any) => api.post('/reports/templates', data),
+  updateTemplate: (id: string, data: any) => api.put(`/reports/templates/${id}`, data),
+  deleteTemplate: (id: string) => api.delete(`/reports/templates/${id}`),
+
+  // Schedules
+  getSchedules: (params?: { projectId?: string }) =>
+    api.get('/reports/schedules', { params }),
+  getScheduleById: (id: string) => api.get(`/reports/schedules/${id}`),
+  createSchedule: (data: any) => api.post('/reports/schedules', data),
+  updateSchedule: (id: string, data: any) => api.put(`/reports/schedules/${id}`, data),
+  deleteSchedule: (id: string) => api.delete(`/reports/schedules/${id}`),
+
+  // History & Generation
+  getHistory: (params?: { projectId?: string; limit?: number }) =>
+    api.get('/reports/history', { params }),
+  generateReport: (templateId: string) =>
+    api.post(`/reports/generate/${templateId}`),
+  downloadReport: (historyId: string) =>
+    api.get(`/reports/download/${historyId}`, { responseType: 'blob' }),
 };
 
 export default api;

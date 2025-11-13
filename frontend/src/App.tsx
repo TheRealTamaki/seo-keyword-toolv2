@@ -11,15 +11,14 @@ import Register from './pages/Register';
 // Dashboard Pages
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import ProjectSettings from './pages/ProjectSettings';
 import Settings from './pages/Settings';
 import Keywords from './pages/Keywords';
 import KeywordResearch from './pages/KeywordResearch';
 import Rankings from './pages/Rankings';
 import Competitors from './pages/Competitors';
-
-// Placeholder pages (to be implemented)
-const Reports: React.FC = () => <div className="p-6">Reports Page - Coming Soon</div>;
-const Alerts: React.FC = () => <div className="p-6">Alerts Page - Coming Soon</div>;
+import Alerts from './pages/Alerts';
+import Reports from './pages/Reports';
 
 const App: React.FC = () => {
   return (
@@ -69,6 +68,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:projectId/settings"
+            element={
+              <ProtectedRoute>
+                <ProjectSettings />
               </ProtectedRoute>
             }
           />
