@@ -90,23 +90,36 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Validate the API key with DataForSEO unless skipped
     if (!skipValidation) {
-      const validation = await DataForSEOService.validateApiKey(apiKey);
+      console.log('Starting DataForSEO validation...');
+      try {
+        const validation = await DataForSEOService.validateApiKey(apiKey);
+        console.log('Validation result:', validation);
 
-      if (!validation.valid) {
-        res.status(400).json({
-          success: false,
-          error: 'Invalid DataForSEO API key',
-          message: validation.message,
-        });
-        return;
+        if (!validation.valid) {
+          console.log('Validation failed:', validation.message);
+          res.status(400).json({
+            success: false,
+            error: 'Invalid DataForSEO API key',
+            message: validation.message,
+          });
+          return;
+        }
+        console.log('Validation passed');
+      } catch (validationError) {
+        console.error('Validation error occurred:', validationError);
+        throw validationError;
       }
     }
 
     // Store encrypted API key
+    console.log('Storing API key in database...');
     const result = await ApiKeyModel.upsertApiKey(userId, apiKey);
+    console.log('API key stored successfully');
 
     // Update validation status
+    console.log('Updating validation status...');
     await ApiKeyModel.updateValidationStatus(userId, !skipValidation);
+    console.log('Validation status updated');
 
     res.status(201).json({
       success: true,
