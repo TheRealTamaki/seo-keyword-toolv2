@@ -60,9 +60,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.login(email, password);
 
       if (response.data.success) {
-        const { user: userData, token } = response.data.data;
+        const { user: userData, access_token, refresh_token } = response.data.data;
 
-        localStorage.setItem('authToken', token);
+        localStorage.setItem('authToken', access_token);
+        localStorage.setItem('refreshToken', refresh_token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
 
@@ -83,7 +84,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.register(email, password);
 
       if (response.data.success) {
-        toast.success('Registration successful! Please log in.');
+        // Check if email verification is required
+        if (response.data.data.requiresEmailVerification) {
+          toast.success(response.data.message || 'Registration successful! Please check your email to verify your account.');
+        } else {
+          toast.success('Registration successful! Please log in.');
+        }
         navigate('/login');
       } else {
         throw new Error(response.data.error || 'Registration failed');
@@ -97,6 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
     toast.success('Logged out successfully');
