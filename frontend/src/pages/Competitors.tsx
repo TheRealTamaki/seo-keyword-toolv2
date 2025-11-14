@@ -119,7 +119,9 @@ const Competitors: React.FC = () => {
     }
   };
 
-  const selectedProjectData = projects.find((p) => p._id === selectedProject);
+  const selectedProjectData = Array.isArray(projects)
+    ? projects.find((p) => p._id === selectedProject)
+    : undefined;
 
   return (
     <div className="space-y-6">
@@ -144,7 +146,7 @@ const Competitors: React.FC = () => {
           className="w-full md:w-1/3 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
         >
           <option value="">Select a project...</option>
-          {projects.map((project) => (
+          {Array.isArray(projects) && projects.map((project) => (
             <option key={project._id} value={project._id}>
               {project.name} ({project.domain})
             </option>
@@ -339,7 +341,7 @@ const Competitors: React.FC = () => {
         </>
       )}
 
-      {!selectedProject && projects.length === 0 && (
+      {!selectedProject && (!Array.isArray(projects) || projects.length === 0) && (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900">No projects yet</h3>
