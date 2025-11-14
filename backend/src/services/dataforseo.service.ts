@@ -40,9 +40,10 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
     const credentials = parseApiKey(apiKey);
 
     // Make a simple request to check user info/status
+    // DataForSEO requires a JSON body (empty array) for POST requests
     const response = await axios.post(
       `${DATAFORSEO_API_BASE}/appendix/user_data`,
-      null,
+      [],
       {
         auth: {
           username: credentials.login,
@@ -113,7 +114,7 @@ export async function getUserInfo(apiKey: string): Promise<any> {
 
   const response = await axios.post(
     `${DATAFORSEO_API_BASE}/appendix/user_data`,
-    null,
+    [],
     {
       auth: {
         username: credentials.login,
