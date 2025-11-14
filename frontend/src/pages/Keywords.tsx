@@ -200,7 +200,9 @@ const Keywords: React.FC = () => {
     return 'text-red-600';
   };
 
-  const selectedProjectData = projects.find((p) => p.id === selectedProject);
+  const selectedProjectData = Array.isArray(projects)
+    ? projects.find((p) => p.id === selectedProject)
+    : undefined;
 
   return (
     <DashboardLayout>
@@ -245,10 +247,10 @@ const Keywords: React.FC = () => {
               onChange={(e) => setSelectedProject(e.target.value)}
               className="flex-1 max-w-md rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             >
-              {projects.length === 0 && (
+              {(!Array.isArray(projects) || projects.length === 0) && (
                 <option value="">No projects available</option>
               )}
-              {projects.map((project) => (
+              {Array.isArray(projects) && projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name} ({project.domain})
                 </option>

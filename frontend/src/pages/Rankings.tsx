@@ -160,7 +160,9 @@ const Rankings: React.FC = () => {
       return;
     }
 
-    const keyword = keywords.find((k) => k.id === selectedKeyword);
+    const keyword = Array.isArray(keywords)
+      ? keywords.find((k) => k.id === selectedKeyword)
+      : undefined;
     if (!keyword) return;
 
     try {
@@ -213,8 +215,12 @@ const Rankings: React.FC = () => {
     );
   };
 
-  const selectedKeywordData = keywords.find((k) => k.id === selectedKeyword);
-  const selectedProjectData = projects.find((p) => p.id === selectedProject);
+  const selectedKeywordData = Array.isArray(keywords)
+    ? keywords.find((k) => k.id === selectedKeyword)
+    : undefined;
+  const selectedProjectData = Array.isArray(projects)
+    ? projects.find((p) => p.id === selectedProject)
+    : undefined;
 
   return (
     <DashboardLayout>
@@ -256,8 +262,8 @@ const Rankings: React.FC = () => {
                 onChange={(e) => setSelectedProject(e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               >
-                {projects.length === 0 && <option value="">No projects</option>}
-                {projects.map((project) => (
+                {(!Array.isArray(projects) || projects.length === 0) && <option value="">No projects</option>}
+                {Array.isArray(projects) && projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name} ({project.domain})
                   </option>
@@ -272,8 +278,8 @@ const Rankings: React.FC = () => {
                 onChange={(e) => setSelectedKeyword(e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               >
-                {keywords.length === 0 && <option value="">No keywords</option>}
-                {keywords.map((keyword) => (
+                {(!Array.isArray(keywords) || keywords.length === 0) && <option value="">No keywords</option>}
+                {Array.isArray(keywords) && keywords.map((keyword) => (
                   <option key={keyword.id} value={keyword.id}>
                     {keyword.keyword} ({keyword.searchEngine} - {keyword.device})
                   </option>

@@ -55,12 +55,27 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
+
+    // Debug logging
+    console.log('API Key POST request received');
+    console.log('Request body:', req.body);
+    console.log('Content-Type:', req.headers['content-type']);
+
     const { apiKey, skipValidation } = req.body;
 
     if (!userId) {
       res.status(401).json({
         success: false,
         error: 'User not authenticated',
+      });
+      return;
+    }
+
+    if (!req.body || Object.keys(req.body).length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Post data is empty',
+        message: 'No data was received in the request body'
       });
       return;
     }
