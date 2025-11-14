@@ -196,7 +196,7 @@ const Projects: React.FC = () => {
         </div>
 
         {/* Projects Grid */}
-        {projects.length === 0 ? (
+        {!Array.isArray(projects) || projects.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">No projects yet</h3>
@@ -214,7 +214,7 @@ const Projects: React.FC = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
+              {Array.isArray(projects) && projects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
