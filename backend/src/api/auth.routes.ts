@@ -23,6 +23,19 @@ router.post(
 
       const result = await AuthService.register({ email, password });
 
+      // Check if email confirmation is required (no session returned)
+      if (!result.session) {
+        res.status(201).json({
+          success: true,
+          data: {
+            user: result.user,
+            requiresEmailVerification: true,
+          },
+          message: 'Registration successful! Please check your email to verify your account before logging in.',
+        });
+        return;
+      }
+
       res.status(201).json({
         success: true,
         data: {
@@ -31,7 +44,7 @@ router.post(
           access_token: result.session.access_token,
           refresh_token: result.session.refresh_token,
         },
-        message: 'Registration successful. Please check your email to verify your account.',
+        message: 'Registration successful. You are now logged in.',
       });
     } catch (error) {
       console.error('Registration error:', error);

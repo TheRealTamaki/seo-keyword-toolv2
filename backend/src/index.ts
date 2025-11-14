@@ -107,18 +107,31 @@ async function start() {
   try {
     // Initialize services
     await initializeDatabase();
-    await initializeRedis();
+
+    // Try to initialize Redis, but don't fail if it's not available
+    try {
+      await initializeRedis();
+    } catch (redisError) {
+      console.warn('⚠ Redis not available - continuing without cache (some features may be limited)');
+      console.warn('  To enable Redis, install and start Redis server on port 6379');
+    }
+
     await initializeSupabase();
 
-    // Initialize job queues and workers
-    initializeQueues();
-    initializeWorkers();
+    // Initialize job queues and workers only if Redis is available
+    try {
+      initializeQueues();
+      initializeWorkers();
+      console.log('✓ Job queue and workers initialized');
+    } catch (queueError) {
+      console.warn('⚠ Job queues not available (Redis required)');
+    }
 
     // Start listening
     app.listen(PORT, () => {
-      console.log(`✓ Server running on http://localhost:${PORT}`);
+      console.log(`\n🚀 Server running on http://localhost:${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('✓ Job queue and workers initialized');
+      console.log(`✓ API available at http://localhost:${PORT}/api\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
