@@ -94,7 +94,12 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   });
 
   if (error) {
-    throw new Error('Invalid email or password');
+    // Check for email not confirmed error
+    if (error.message.includes('Email not confirmed')) {
+      throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+    }
+    // For other errors, show the actual error message
+    throw new Error(error.message);
   }
 
   if (!data.user || !data.session) {
