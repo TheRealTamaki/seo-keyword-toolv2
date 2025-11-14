@@ -41,9 +41,18 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
 
     // Make a simple request to check user info/status
     // DataForSEO requires a JSON body (empty array) for POST requests
+    const requestBody = [];
+
+    console.log('🔍 DEBUG - About to send request to DataForSEO:');
+    console.log('  URL:', `${DATAFORSEO_API_BASE}/appendix/user_data`);
+    console.log('  Body type:', typeof requestBody);
+    console.log('  Body value:', JSON.stringify(requestBody));
+    console.log('  Body is Array:', Array.isArray(requestBody));
+    console.log('  Username:', credentials.login);
+
     const response = await axios.post(
       `${DATAFORSEO_API_BASE}/appendix/user_data`,
-      [],
+      requestBody,
       {
         auth: {
           username: credentials.login,
@@ -55,6 +64,8 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
         timeout: 10000, // 10 second timeout
       }
     );
+
+    console.log('✅ DataForSEO response received:', response.data);
 
     // DataForSEO returns status_code in response
     if (response.data && response.data.status_code === 20000) {
