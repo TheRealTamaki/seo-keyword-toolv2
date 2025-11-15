@@ -66,14 +66,22 @@ router.get('/stats', authenticate, async (req: Request, res: Response) => {
     );
     const totalCompetitors = parseInt(competitorsResult.rows[0]?.count || '0');
 
-    // Get total alerts
-    const alertsResult = await pool.query(
-      `SELECT COUNT(*) as count
-       FROM alerts a
-       WHERE a.user_id = $1 AND a.is_active = true`,
-      [userId]
-    );
-    const totalAlerts = parseInt(alertsResult.rows[0]?.count || '0');
+    // Get total alerts (gracefully handle if table doesn't exist yet)
+    let totalAlerts = 0;
+    try {
+      const alertsResult = await pool.query(
+        `SELECT COUNT(*) as count
+         FROM alerts a
+         WHERE a.user_id = $1 AND a.enabled = true`,
+        [userId]
+      );
+      totalAlerts = parseInt(alertsResult.rows[0]?.count || '0');
+    } catch (alertsError: any) {
+      // If alerts table doesn't exist yet, just set to 0
+      if (alertsError.code !== '42P01') {
+        throw alertsError; // Re-throw if it's not a "table doesn't exist" error
+      }
+    }
 
     res.json({
       success: true,

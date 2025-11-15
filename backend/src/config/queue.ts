@@ -6,6 +6,10 @@ const queueOptions: QueueOptions = {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD,
+    // Disable retries at module load to prevent error spam
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null, // Don't retry connection at module load
   },
   defaultJobOptions: {
     attempts: 3, // Retry failed jobs up to 3 times
@@ -18,15 +22,27 @@ const queueOptions: QueueOptions = {
   },
 };
 
-// Create queues
-export const rankCheckQueue: Queue = new Bull('rank-check', queueOptions);
+// Lazy-load queues to prevent errors when Redis is not available
+let rankCheckQueueInstance: Queue | null = null;
+
+export const getRankCheckQueue = (): Queue => {
+  if (!rankCheckQueueInstance) {
+    rankCheckQueueInstance = new Bull('rank-check', queueOptions);
+  }
+  return rankCheckQueueInstance;
+};
+
+// For backwards compatibility
+export const rankCheckQueue: Queue = getRankCheckQueue();
 
 /**
  * Initialize queue event listeners
  */
 export function initializeQueues(): void {
+  const queue = getRankCheckQueue();
+
   // Rank check queue events
-  rankCheckQueue.on('completed', (job, result) => {
+  queue.on('completed', (job, result) => {
     console.log(`Job ${job.id} completed:`, {
       jobId: job.id,
       successCount: result.successCount,
@@ -34,7 +50,7 @@ export function initializeQueues(): void {
     });
   });
 
-  rankCheckQueue.on('failed', (job, err) => {
+  queue.on('failed', (job, err) => {
     console.error(`Job ${job?.id} failed:`, {
       jobId: job?.id,
       error: err.message,
@@ -42,15 +58,18 @@ export function initializeQueues(): void {
     });
   });
 
-  rankCheckQueue.on('error', (error) => {
-    console.error('Queue error:', error);
+  queue.on('error', (error) => {
+    // Only log error once, not repeatedly
+    if (!error.message?.includes('ECONNREFUSED')) {
+      console.error('Queue error:', error);
+    }
   });
 
-  rankCheckQueue.on('stalled', (job) => {
+  queue.on('stalled', (job) => {
     console.warn(`Job ${job.id} stalled - may need manual intervention`);
   });
 
-  console.log('Job queues initialized');
+  console.log('✓ Job queues initialized');
 }
 
 /**
@@ -64,7 +83,7 @@ export async function getQueueStats(queueName: string = 'rank-check'): Promise<{
   delayed: number;
   paused: number;
 }> {
-  const queue = queueName === 'rank-check' ? rankCheckQueue : rankCheckQueue;
+  const queue = getRankCheckQueue();
 
   const [waiting, active, completed, failed, delayed, paused] = await Promise.all([
     queue.getWaitingCount(),
@@ -85,7 +104,7 @@ export async function cleanOldJobs(
   queueName: string = 'rank-check',
   grace: number = 24 * 60 * 60 * 1000 // 24 hours
 ): Promise<void> {
-  const queue = queueName === 'rank-check' ? rankCheckQueue : rankCheckQueue;
+  const queue = getRankCheckQueue();
 
   await queue.clean(grace, 'completed');
   await queue.clean(grace, 'failed');
@@ -97,6 +116,8 @@ export async function cleanOldJobs(
  * Graceful shutdown
  */
 export async function closeQueues(): Promise<void> {
-  await rankCheckQueue.close();
-  console.log('All queues closed');
+  if (rankCheckQueueInstance) {
+    await rankCheckQueueInstance.close();
+    console.log('✓ All queues closed');
+  }
 }
