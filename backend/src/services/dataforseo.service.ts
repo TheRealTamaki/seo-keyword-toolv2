@@ -39,10 +39,13 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
   try {
     const credentials = parseApiKey(apiKey);
 
+    console.log('Starting DataForSEO validation...');
+
     // Make a simple request to check user info/status
+    // DataForSEO requires an empty array for POST requests, not null
     const response = await axios.post(
       `${DATAFORSEO_API_BASE}/appendix/user_data`,
-      null,
+      [],
       {
         auth: {
           username: credentials.login,
@@ -55,8 +58,15 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
       }
     );
 
+    console.log('Validation result:', {
+      valid: response.data.status_code === 20000,
+      message: response.data.status_message || 'API key is valid',
+      details: response.data,
+    });
+
     // DataForSEO returns status_code in response
     if (response.data && response.data.status_code === 20000) {
+      console.log('✓ API key validated successfully');
       return {
         valid: true,
         message: 'API key is valid',
@@ -67,6 +77,7 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
       };
     }
 
+    console.log('Validation failed:', response.data?.status_message);
     return {
       valid: false,
       message: response.data?.status_message || 'Invalid API key',
@@ -75,6 +86,8 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
+
+      console.log('Validation failed:', axiosError.message);
 
       // 401 means invalid credentials
       if (axiosError.response?.status === 401) {
@@ -92,12 +105,23 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
         };
       }
 
+      // Include response data for debugging
+      if (axiosError.response?.data) {
+        console.log('Validation failed:', axiosError.response.data);
+        return {
+          valid: false,
+          message: (axiosError.response.data as any)?.status_message || axiosError.message || 'Failed to validate API key',
+          details: axiosError.response.data,
+        };
+      }
+
       return {
         valid: false,
         message: axiosError.message || 'Failed to validate API key',
       };
     }
 
+    console.log('Unexpected validation error:', error);
     return {
       valid: false,
       message: 'Unexpected error during validation',
@@ -111,9 +135,10 @@ export async function validateApiKey(apiKey: string): Promise<ValidationResult> 
 export async function getUserInfo(apiKey: string): Promise<any> {
   const credentials = parseApiKey(apiKey);
 
+  // DataForSEO requires an empty array for POST requests, not null
   const response = await axios.post(
     `${DATAFORSEO_API_BASE}/appendix/user_data`,
-    null,
+    [],
     {
       auth: {
         username: credentials.login,
